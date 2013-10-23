@@ -23,6 +23,33 @@ public class Main {
     static RXTXRobot robot;
     static enum  Direction {LEFT, RIGHT}
 
+
+    //sprint 3 mobility requirements
+
+    static void moveEightFeetThenHitAWallThenTurnNinetyDegreesToTheLeft(int speed,int duration)
+    {
+        robot.runMotor(LEFT_MOTOR, speed, RIGHT_MOTOR, -1 * (int)(speed*1.09), duration);
+        //making the robot move
+        runUntilBumped();
+        runMotorsToMove(-1 * MAX_SPEED, 100); // Negative makes it backwards.      ***********DURATION IS ARBITRARY.
+        rightAngleTurn(Direction.LEFT); // THIS FUNCTION IS UNTESTED. NO GUARANTEES.
+    }
+
+    static void driveInSquare()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+
+        }
+    }
+
+    // BELOW THIS LINE DON'T FUCK WITH ME.
+
+    static void driveStraightThisManyFeet(double distance)
+    {
+        moveDemMotors((int)(distance * 400));
+    }
+
     static void stopMotors()
     {
         runMotorsToMove(0, 0);
@@ -182,7 +209,7 @@ public class Main {
 
     static void rightAngleTurn(Direction direction)
     {
-        runMotorsToTurn(direction, MAX_SPEED, 400);
+        runMotorsToTurn(direction, MAX_SPEED, 400); // 400 is arbitrary. Requires testing.
     }
 
     static String verboseLocationDescription(String location)

@@ -3,6 +3,8 @@ package edu.smu.lyle;
 import rxtxrobot.*;
 public class Main {
 
+    //Arya is a jerk
+
     // TO-DO: switch code to encoded motors
 
     /* All these values are arbitrary as MESS. We need to figure them out when shit gets wired.*/

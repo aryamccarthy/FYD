@@ -3,7 +3,7 @@ package edu.smu.lyle;
 import rxtxrobot.*;
 public class Main {
 
-    //Arya is a jerk
+    // Chris isn't allowed to comment my code anymore.
 
     // TO-DO: switch code to encoded motors
 

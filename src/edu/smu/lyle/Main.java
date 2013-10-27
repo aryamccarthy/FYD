@@ -36,29 +36,23 @@ public class Main {
     }
 
     static void displayonscreenRFID(int speed){
-
-
-        //drive forward while reading for tag
-
-
         runMotorsToMove(speed, 0);
-
 
         RFIDSensor sensor = new RFIDSensor();
         sensor.setPort(RFID_PORT);
         sensor.connect();
 
-        while(!sensor.hasTag()) sensor.sleep(300);
+        while(!sensor.hasTag()) sensor.sleep(100);
         String result = sensor.getTag();
 
         sensor.close();
 
-        if (result.equals("66006C11F9E2")) result = "The location is Dadaab\nThe obstacle is a limbo bar.\nThe challenge is an elevated well.\n";
-        else if (result.equals("66006C432D64")) result = "The location is Fish Town.\nThe obstacle is a a maze.\nThe challenge is a ground-level water basin.\n";
-        else if (result.equals("66006C001F15")) result = "The location is Ali Ade.\nThe obstacle is an opening in a wall.\nThe challenge is an elevated well.\n";
+        if (result.equals("66006C11F9E2")) result = "\nThe location is Dadaab\nThe obstacle is a limbo bar.\nThe challenge is an elevated well.\n";
+        else if (result.equals("66006C432D64")) result = "\nThe location is Fish Town.\nThe obstacle is a a maze.\nThe challenge is a ground-level water basin.\n";
+        else if (result.equals("66006C001F15")) result = "\nThe location is Ali Ade.\nThe obstacle is an opening in a wall.\nThe challenge is an underground well.\n";
         else result = "Undefined tag.";
 
-        System.out.println(result);
+        echo(result);
 
 
 
@@ -80,7 +74,8 @@ public class Main {
     {
         for (int i = 0; i < 4; i++)
         {
-
+            driveStraightThisManyFeet(2.0);
+            if (i != 3) rightAngleTurn(Direction.LEFT);
         }
     }
 

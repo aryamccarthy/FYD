@@ -7,7 +7,7 @@ public class Main {
 
     // TO-DO: switch code to encoded motors
 
-    /* All these values are arbitrary as MESS. We need to figure them out when shit gets wired.*/
+    /* All these values are arbitrary as MESS. We need to figure them out when MESS gets wired.*/
     // Pins
     static final int BUMPER_PIN = 3; // Values range from 1023 (not pressed) to 0 (pressed)
     // Pump stuff
@@ -18,8 +18,8 @@ public class Main {
     static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
     static final int SERVO = RXTXRobot.SERVO1; // Pin 10
     // Other
-    static final String ROBOT_PORT = "/dev/tty.usbmodemfa1431";
-    static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";
+    static final String ROBOT_PORT = "/dev/tty.usbmodemfa1431";           //DEPENDS ON YOUR COMPUTER
+    static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
     static RXTXRobot robot;
     static enum  Direction {LEFT, RIGHT}
 
@@ -185,15 +185,42 @@ public class Main {
         runMotorsToTurn(direction, MAX_SPEED, 400);
     }
 
+
+    static void printAllTheData()
+    {
+        int temperature = getTemperature();
+        echo("Temperature: " + temperature);
+        double turbidity = calculateTurbidity(5.0);
+        echo("Turbidity: " + turbidity);
+        double pH = calculatePH(5.0, temperature);
+        echo("pH: " + pH);
+        System.out.printf("%13s:%d\n%13s:%5.3f\n%13s:%5.3f", "Temperature", temperature, "Turbidity:", turbidity, "pH", pH);
+
+    }
+
+    static void applyRemediation()
+    {
+        //while()
+    }
+
     static String verboseLocationDescription(String location)
     {
         String obstacle;
         String challenge;
         if (location.equals("Fish Town")) {
-             //TODO fill me in from Sprint 2 info.
+            obstacle = new StringBuilder()
+                    .append("It was the best of times, it was the worst of times,\n")
+                    .append("it was the age of wisdom, it was the age of foolishness,\n")
+                    .append("it was the epoch of belief, it was the epoch of incredulity,\n")
+                    .append("it was the season of Light, it was the season of Darkness,\n")
+                    .append("it was the spring of hope, it was the winter of despair,\n")
+                    .append("we had everything before us, we had nothing before us")
+                    .toString();
         }
         return "Hi there.";
     }
+
+
 
     static double calculatePH(double voltage, double temperature)
     {
@@ -206,6 +233,8 @@ public class Main {
         temperature += 273.15;
         return (E0 - voltage)/(gain * R * temperature / F / nE *2.303);
     }
+
+
 
     /*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~*/
     public static void main(String[] args) {

@@ -34,7 +34,7 @@ public class Main {
     public static void driveInTwoFootSquare() {
         final int clicks = 2 * FOOT_TO_CLICK_CONVERSION;
         for (int i = 0; i < 4; i++) {
-            moveDemMotors(clicks);
+            moveTheMotors(clicks);
             if (i != 3)
                 rightAngleTurn(Direction.LEFT);
         }
@@ -42,7 +42,7 @@ public class Main {
 
     static void moveThenHitAWallThenTurnLeft() {
         runUntilBumped();
-        moveDemMotors((int)(-0.5 * FOOT_TO_CLICK_CONVERSION));
+        moveTheMotors((int) (-0.5 * FOOT_TO_CLICK_CONVERSION));
         rightAngleTurn(Direction.LEFT);
     }
 
@@ -96,7 +96,7 @@ public class Main {
     /*************MOBILITY*****************************************************************************/
 
     static void driveThisManyFeet(double feet) {
-        moveDemMotors(FOOT_TO_CLICK_CONVERSION*(int)feet);
+        moveTheMotors(FOOT_TO_CLICK_CONVERSION * (int) feet);
     }
 
     static void runMotorsIndefinitely() {
@@ -107,7 +107,7 @@ public class Main {
         robot.runMotor(LEFT_MOTOR, 0, RIGHT_MOTOR, 0, 0);
     }
 
-    static void moveDemMotors(int clicks) {
+    static void moveTheMotors(int clicks) {
         robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED/0.97), clicks, RIGHT_MOTOR, -1 * MAX_SPEED, clicks);
     }
 
@@ -221,7 +221,6 @@ public class Main {
     }
 
 
-
     /*************TESTING******************************************************************************/
 
     static int pollTemperature() {
@@ -236,6 +235,19 @@ public class Main {
         }while(numGoodReads < 10);
         return (int)Math.round((double)sum/numGoodReads);
     }
+
+    static boolean isWet() {
+        return getSensorData(WATER_PIN) < 100;
+    }
+
+    static int pollPhPin() {
+        return pollSensorData(PH_PIN);
+    }
+
+    static int pollTurbidityPin() {
+        return pollSensorData(TURBIDITY_PIN);
+    }
+
     static double calculateTurbidity(double voltage) {
         // Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
         voltage = 3 - voltage;
@@ -255,17 +267,6 @@ public class Main {
         return (E0 - voltage)/(gain * R * temperature / F / nE *2.303);
     }
 
-    static boolean isWet() {
-        return getSensorData(WATER_PIN) < 100;
-    }
-
-    static int pollPhPin() {
-        return pollSensorData(PH_PIN);
-    }
-
-    static int pollTurbidityPin() {
-        return pollSensorData(TURBIDITY_PIN);
-    }
 
     /*************MISCELLANEOUS************************************************************************/
     static void setup(){

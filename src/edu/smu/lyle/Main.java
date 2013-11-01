@@ -15,7 +15,7 @@ public class Main {
     static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;
     static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
     static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
-    static final int SERVO = RXTXRobot.SERVO1; // Pin 10
+    static final int SERVO = RXTXRobot.SERVO2; // Pin 10
     // Other
     static final int MAX_SPEED = 500;
     static final int FOOT_TO_CLICK_CONVERSION = 100;
@@ -87,6 +87,8 @@ public class Main {
 
     static void remediateAndMix() {
         remediate();
+        robot.setMixerSpeed(MAX_SPEED/2);
+        robot.runMixer(MIXER, 200);
     }
 
     // end of requirements
@@ -289,17 +291,24 @@ public class Main {
         setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 
         /*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
-        driveToGetRFID();
-        moveThenHitAWallThenTurnLeft();
-        driveInTwoFootSquare();
+        //driveToGetRFID();
+        //moveThenHitAWallThenTurnLeft();
+        //driveInTwoFootSquare();
 
         /*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
-        moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
-        printAllTheData();
-        remediateAndMix();
-        int temperature = pollTemperature();
-        for (int i = 0; i < 2; i ++)
-            echo (calculatePH(pollPhPin(), pollTemperature()));
+        //moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
+        //printAllTheData();
+        //remediateAndMix();
+        //int temperature = pollTemperature();
+        //for (int i = 0; i < 2; i ++)
+        //    echo (calculatePH(pollPhPin(), pollTemperature()));
+
+        /*~~~~~~~~~ Making things not die. ~~~~~~~~~~~~~~~*/
+        //echo (pollPhPin());
+        //echo(pollTemperature());
+        //echo(pollTurbidityPin());
+        //driveThisManyFeet(4);
+        setServoAngle(20);
 
         cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
     }

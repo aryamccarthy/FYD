@@ -4,8 +4,8 @@ import rxtxrobot.*;
 public class Main {
 
     // Pins
-    static final int BUMPER_LEFT_PIN = 1;
-    static final int BUMPER_RIGHT_PIN = 2; // Values range from 1023 (not pressed) to 0 (pressed)
+    static final int BUMPER_RIGHT_PIN = 1;
+    static final int BUMPER_LEFT_PIN = 2; // Values range from 1023 (not pressed) to 0 (pressed)
     static final int WATER_PIN = 5;
     static final int TURBIDITY_PIN = 4;
     static final int PH_PIN = 3;
@@ -15,21 +15,27 @@ public class Main {
     static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;
     static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
     static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
-    static final int SERVO = RXTXRobot.SERVO2; // Pin 10
+    static final int SERVO = RXTXRobot.SERVO1; // Pin 10
     // Other
     static final int MAX_SPEED = 500;
-    static final int FOOT_TO_CLICK_CONVERSION = 100;
+    static final int FOOT_TO_CLICK_CONVERSION = 590;
+    static final int TURN_CONSTANT = 305;
     static final String ROBOT_PORT = "/dev/tty.usbmodemfa1431";           //DEPENDS ON YOUR COMPUTER
     static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
     static RXTXRobot robot;
     static enum  Direction {LEFT, RIGHT}
+
+    static final double MOTOR_CONSTANT;
+    static {
+        MOTOR_CONSTANT = 1.185;
+    }
 
     static String challenge;
     static int temperature;
     static double pH;
     static double turbidity;
 
-    //sprint 3 mobility requirements
+    //SPRINT 3 mobility requirements
 
     public static void driveInTwoFootSquare() {
         final int clicks = 2 * FOOT_TO_CLICK_CONVERSION;
@@ -42,7 +48,7 @@ public class Main {
 
     static void moveThenHitAWallThenTurnLeft() {
         runUntilBumped();
-        moveTheMotors((int) (-0.5 * FOOT_TO_CLICK_CONVERSION));
+        moveBackwards((int) (0.25 * FOOT_TO_CLICK_CONVERSION));
         rightAngleTurn(Direction.LEFT);
     }
 
@@ -99,18 +105,24 @@ public class Main {
 
     static void driveThisManyFeet(double feet) {
         moveTheMotors(FOOT_TO_CLICK_CONVERSION * (int) feet);
+        robot.resetEncodedMotorPosition(LEFT_MOTOR);
+        robot.resetEncodedMotorPosition(RIGHT_MOTOR);
     }
 
     static void runMotorsIndefinitely() {
-        robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/1.09), RIGHT_MOTOR, -1, 0);
+        robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, -1 * MAX_SPEED, 0);
     }
 
     static void stopMotors() {
         robot.runMotor(LEFT_MOTOR, 0, RIGHT_MOTOR, 0, 0);
     }
 
-    static void moveTheMotors(int clicks) {
-        robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED/0.97), clicks, RIGHT_MOTOR, -1 * MAX_SPEED, clicks);
+    static void moveTheMotors(int ticks) {
+        robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED), ticks, RIGHT_MOTOR, -1 * MAX_SPEED, ticks);
+    }
+
+    static void moveBackwards(int ticks) {
+        robot.runEncodedMotor(LEFT_MOTOR, -1 * (int)(MAX_SPEED/MOTOR_CONSTANT), ticks, RIGHT_MOTOR, MAX_SPEED, ticks);
     }
 
     static void runUntilBumped() {
@@ -120,12 +132,12 @@ public class Main {
     }
 
     static void runMotorsToTurn(Direction direction, int duration) {
-        int dir = (direction == Direction.LEFT) ? -1 : 1;
-        robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED / 0.97), 400, RIGHT_MOTOR, dir * MAX_SPEED, 400);
+        int dir = (direction == Direction.RIGHT) ? -1 : 1;
+        robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED /MOTOR_CONSTANT), duration, RIGHT_MOTOR, dir * MAX_SPEED, duration);
     }
 
     static void rightAngleTurn(Direction direction) {
-        runMotorsToTurn(direction, 400); // 400 is arbitrary. Requires testing.
+        runMotorsToTurn(direction, TURN_CONSTANT); // 400 is arbitrary. Requires testing.
     }
 
     static void setServoAngle(int angle) {
@@ -218,7 +230,7 @@ public class Main {
     }
 
     static void waitForBump() {
-        while (true) if (getSensorData(BUMPER_RIGHT_PIN) < 1000)
+        while (true) if (getSensorData(BUMPER_RIGHT_PIN) < 1000 || getSensorData(BUMPER_LEFT_PIN) < 1000)
             break;
     }
 
@@ -284,7 +296,16 @@ public class Main {
         System.out.println(arg);
     }
 
-
+    static void square() {
+        for (int i = 0; i < 4; i++) {
+            driveThisManyFeet(2.0);
+            robot.resetEncodedMotorPosition(LEFT_MOTOR);
+            robot.resetEncodedMotorPosition(RIGHT_MOTOR);
+            rightAngleTurn(Direction.LEFT);
+            robot.resetEncodedMotorPosition(LEFT_MOTOR);
+            robot.resetEncodedMotorPosition(RIGHT_MOTOR);
+        }
+    }
 
     /*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~*/
     public static void main(String[] args) {
@@ -293,8 +314,7 @@ public class Main {
         /*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
         //driveToGetRFID();
         //moveThenHitAWallThenTurnLeft();
-        //driveInTwoFootSquare();
-
+        //square();
         /*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
         //moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
         //printAllTheData();
@@ -307,9 +327,9 @@ public class Main {
         //echo (pollPhPin());
         //echo(pollTemperature());
         //echo(pollTurbidityPin());
-        //driveThisManyFeet(4);
-        setServoAngle(20);
-
+        //driveThisManyFeet(3);
+        //setServoAngle(20);
+        //waitForBump();
         cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
     }
 

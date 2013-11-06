@@ -1,336 +1,382 @@
 package edu.smu.lyle;
 
+import gnu.io.NoSuchPortException;
 import rxtxrobot.*;
 public class Main {
 
-    // Pins
-    static final int BUMPER_RIGHT_PIN = 1;
-    static final int BUMPER_LEFT_PIN = 2; // Values range from 1023 (not pressed) to 0 (pressed)
-    static final int WATER_PIN = 5;
-    static final int TURBIDITY_PIN = 4;
-    static final int PH_PIN = 3;
+	// Arm Angles
+	static final int HIGH_ANGLE = 0;
+	static final int MEDIUM_ANGLE = 110;
+	static final int LOW_ANGLE = 140;
+	// Pins
+	static final int BUMPER_RIGHT_PIN = 1;
+	static final int BUMPER_LEFT_PIN = 2;
+	static final int PH_PIN = 3;
+	static final int TURBIDITY_PIN = 4;
+	static final int WATER_PIN = 5;
+	// Motors
+	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;
+	static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;
+	static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
+	static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
+	static final int SERVO = RXTXRobot.SERVO1; // Pin 10
+	// Movement constants
+	static final double MOTOR_CONSTANT;                // BIGGER NUMBERS -> MORE RIGHT SKEW
+	static {
+		MOTOR_CONSTANT = 1.17;
+	}
+	static final int MAX_SPEED = 500;
+	static final int FOOT_TO_CLICK_CONVERSION = 590;   // BIGGER NUMBER -> FARTHER DISTANCE
+	static final int TURN_CONSTANT = 330;              // BIGGER NUMBER -> BIGGER ANGLE
+	// Dispensing constants.
+	static final double SOLUTION_PH;
+	static {
+		SOLUTION_PH = 5.0;                      // TYPE WHATEVER THEY TELL YOU.
+	}
+	// Connection constants.
+	static final String ROBOT_PORT = "/dev/tty.usbmodemfa1431";           //DEPENDS ON YOUR COMPUTER
+	static final String ALTERNATE_ROBOT_PORT = "/dev/tty.usbmodemfd1331"; //DEPENDS ON YOUR COMPUTER
+	static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
+	static RXTXRobot robot;
+	// State variables (UNUSED)
+	static String challenge;
+	static int temperature;
+	static double pH;
+	static double turbidity;
 
-    // Motors
-    static final int LEFT_MOTOR = RXTXRobot.MOTOR1;
-    static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;
-    static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
-    static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
-    static final int SERVO = RXTXRobot.SERVO1; // Pin 10
-    // Other
-    static final int MAX_SPEED = 500;
-    static final int FOOT_TO_CLICK_CONVERSION = 590;
-    static final int TURN_CONSTANT = 305;
-    static final String ROBOT_PORT = "/dev/tty.usbmodemfa1431";           //DEPENDS ON YOUR COMPUTER
-    static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
-    static RXTXRobot robot;
-    static enum  Direction {LEFT, RIGHT}
+	// SPRINT 3 REQUIREMENTS ***************************************************************************
 
-    static final double MOTOR_CONSTANT;
-    static {
-        MOTOR_CONSTANT = 1.185;
-    }
+	static void square() {
+		for (int i = 0; i < 4; i++) {
+			driveThisManyFeet(2.0);
+			robot.resetEncodedMotorPosition(LEFT_MOTOR);
+			robot.resetEncodedMotorPosition(RIGHT_MOTOR);
+			rightAngleTurn(Direction.LEFT);
+			robot.resetEncodedMotorPosition(LEFT_MOTOR);
+			robot.resetEncodedMotorPosition(RIGHT_MOTOR);
+		}
+	}
 
-    static String challenge;
-    static int temperature;
-    static double pH;
-    static double turbidity;
+	static void moveThenHitAWallThenTurnLeft() {
+		runUntilBumped();
+		moveBackwards((int) (0.25 * FOOT_TO_CLICK_CONVERSION));
+		rightAngleTurn(Direction.LEFT);
+	}
 
-    //SPRINT 3 mobility requirements
+	static enum ArmHeight {LOW, MEDIUM, HIGH}
+	static void moveArm (ArmHeight height) {
+		int angle = 0;
+		if (height == ArmHeight.HIGH)
+			angle = HIGH_ANGLE;
+		if (height == ArmHeight.MEDIUM)
+			angle = MEDIUM_ANGLE;
+		if (height == ArmHeight.LOW)
+			angle = LOW_ANGLE;
+		setServoAngle(angle);
+		assert isWet();
+	}
 
-    public static void driveInTwoFootSquare() {
-        final int clicks = 2 * FOOT_TO_CLICK_CONVERSION;
-        for (int i = 0; i < 4; i++) {
-            moveTheMotors(clicks);
-            if (i != 3)
-                rightAngleTurn(Direction.LEFT);
-        }
-    }
+	static void driveToGetRFID() {
+		runMotorsIndefinitely();
 
-    static void moveThenHitAWallThenTurnLeft() {
-        runUntilBumped();
-        moveBackwards((int) (0.25 * FOOT_TO_CLICK_CONVERSION));
-        rightAngleTurn(Direction.LEFT);
-    }
+		String result = keepCheckingForRFID();
 
-    static enum ArmHeight {LOW, MEDIUM, HIGH}
-    static void moveArm (ArmHeight height) {
-        int angle = 0;
-        if (height == ArmHeight.HIGH)
-            angle = 15;
-        if (height == ArmHeight.MEDIUM)
-            angle = 45;
-        if (height == ArmHeight.LOW)
-            angle = 165;
-        setServoAngle(angle);
-        assert isWet();
-    }
+		if (result.equals("66006C11F9E2")) result = "\nThe location is Dadaab\nThe obstacle is a limbo bar.\nThe challenge is an elevated well.\n";
+		else if (result.equals("66006C432D64")) result = "\nThe location is Fish Town.\nThe obstacle is a a maze.\nThe challenge is a ground-level water basin.\n";
+		else if (result.equals("66006C001F15")) result = "\nThe location is Ali Ade.\nThe obstacle is an opening in a wall.\nThe challenge is an underground well.\n";
+		else result = "Undefined tag.";
 
-    static void driveToGetRFID() {
-        runMotorsIndefinitely();
+		echo(result);
+		stopMotors();
 
-        String result = keepCheckingForRFID();
+	}
 
-        if (result.equals("66006C11F9E2")) result = "\nThe location is Dadaab\nThe obstacle is a limbo bar.\nThe challenge is an elevated well.\n";
-        else if (result.equals("66006C432D64")) result = "\nThe location is Fish Town.\nThe obstacle is a a maze.\nThe challenge is a ground-level water basin.\n";
-        else if (result.equals("66006C001F15")) result = "\nThe location is Ali Ade.\nThe obstacle is an opening in a wall.\nThe challenge is an underground well.\n";
-        else result = "Undefined tag.";
+	static void printAllTheData() {
+		int temperature = pollTemperature();
+		echo("Temperature: " + temperature);
+		double turbidity = calculateTurbidity(pollTurbidityPin());
+		echo("Turbidity: " + turbidity);
+		double pH = calculatePH(pollPhPin(), temperature);
+		echo("pH: " + pH);
+		System.out.printf("%13s:%d\n%13s:%5.3f\n%13s:%5.3f", "Temperature", temperature, "Turbidity:", turbidity, "pH", pH);
 
-        echo(result);
-        stopMotors();
+	}
 
-    }
+	static void remediateAndMix() {
+		remediate();
+		mix();
+	}
 
-    static void printAllTheData() {
-        int temperature = pollTemperature();
-        echo("Temperature: " + temperature);
-        double turbidity = calculateTurbidity(pollTurbidityPin());
-        echo("Turbidity: " + turbidity);
-        double pH = calculatePH(pollPhPin(), temperature);
-        echo("pH: " + pH);
-        System.out.printf("%13s:%d\n%13s:%5.3f\n%13s:%5.3f", "Temperature", temperature, "Turbidity:", turbidity, "pH", pH);
+	// END OF REQUIREMENTS *****************************************************************************
 
-    }
+	/*************BELOW THIS LINE DON'T FUCK WITH ME.**************************************************/
 
-    static void remediateAndMix() {
-        remediate();
-        robot.setMixerSpeed(MAX_SPEED/2);
-        robot.runMixer(MIXER, 200);
-    }
+	/*************MOBILITY*****************************************************************************/
 
-    // end of requirements
+	static void driveThisManyFeet(double feet) {
+		moveTheMotors(FOOT_TO_CLICK_CONVERSION * (int) feet);
+		robot.resetEncodedMotorPosition(LEFT_MOTOR);
+		robot.resetEncodedMotorPosition(RIGHT_MOTOR);
+	}
 
-    /*************BELOW THIS LINE DON'T FUCK WITH ME.**************************************************/
+	static void runMotorsIndefinitely() {
+		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, -1 * MAX_SPEED, 0);
+	}
 
-    /*************MOBILITY*****************************************************************************/
+	static void stopMotors() {
+		robot.runMotor(LEFT_MOTOR, 0, RIGHT_MOTOR, 0, 0);
+	}
 
-    static void driveThisManyFeet(double feet) {
-        moveTheMotors(FOOT_TO_CLICK_CONVERSION * (int) feet);
-        robot.resetEncodedMotorPosition(LEFT_MOTOR);
-        robot.resetEncodedMotorPosition(RIGHT_MOTOR);
-    }
+	static void moveTheMotors(int ticks) {
+		robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED), ticks, RIGHT_MOTOR, -1 * MAX_SPEED, ticks);
+	}
 
-    static void runMotorsIndefinitely() {
-        robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, -1 * MAX_SPEED, 0);
-    }
+	static void moveBackwards(int ticks) {
+		robot.runEncodedMotor(LEFT_MOTOR, -1 * (int)(MAX_SPEED/MOTOR_CONSTANT), ticks, RIGHT_MOTOR, MAX_SPEED, ticks);
+	}
 
-    static void stopMotors() {
-        robot.runMotor(LEFT_MOTOR, 0, RIGHT_MOTOR, 0, 0);
-    }
+	static void runUntilBumped() {
+		runMotorsIndefinitely();
+		waitForBump();
+		stopMotors();
+	}
 
-    static void moveTheMotors(int ticks) {
-        robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED), ticks, RIGHT_MOTOR, -1 * MAX_SPEED, ticks);
-    }
+	static enum  Direction {LEFT, RIGHT}
+	static void runMotorsToTurn(Direction direction, int duration) {
+		int dir = (direction == Direction.RIGHT) ? -1 : 1;
+		robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED /MOTOR_CONSTANT), duration, RIGHT_MOTOR, dir * MAX_SPEED, duration);
+	}
 
-    static void moveBackwards(int ticks) {
-        robot.runEncodedMotor(LEFT_MOTOR, -1 * (int)(MAX_SPEED/MOTOR_CONSTANT), ticks, RIGHT_MOTOR, MAX_SPEED, ticks);
-    }
+	static void rightAngleTurn(Direction direction) {
+		runMotorsToTurn(direction, TURN_CONSTANT); // 400 is arbitrary. Requires testing.
+	}
 
-    static void runUntilBumped() {
-        runMotorsIndefinitely();
-        waitForBump();
-        stopMotors();
-    }
-
-    static void runMotorsToTurn(Direction direction, int duration) {
-        int dir = (direction == Direction.RIGHT) ? -1 : 1;
-        robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED /MOTOR_CONSTANT), duration, RIGHT_MOTOR, dir * MAX_SPEED, duration);
-    }
-
-    static void rightAngleTurn(Direction direction) {
-        runMotorsToTurn(direction, TURN_CONSTANT); // 400 is arbitrary. Requires testing.
-    }
-
-    static void setServoAngle(int angle) {
-        robot.moveServo(SERVO, angle);
-    }
-
-
-    /*************REMEDIATION*************************************************************************/
-
-    static void dispenseRemediationFluidVolume(double milliliters) {
-        final int MAX_TIME = 30000; // 30 seconds
-        final double MAX_VOLUME = 5.4;   // Most that can be dispensed in MAX_TIME at MAX_SPEED.
-        final double VOLUME_TO_TIME = MAX_TIME/MAX_VOLUME;
-        double time = milliliters * VOLUME_TO_TIME;
-        echo(time);
-        for (int i = 0; i < (int)time/MAX_TIME; i++)
-            robot.runMotor(PUMP, MAX_SPEED, MAX_TIME);
-        echo(((int) time) % MAX_TIME);
-        robot.runMotor(PUMP, MAX_SPEED, ((int)time) % MAX_TIME);
-    }
-
-    static void stopPump() {
-        robot.runMotor(PUMP, 0, 0);
-    }
-
-    static void preLoad() {
-        robot.runMotor(PUMP, MAX_SPEED, 0);
-        robot.sleep(300);
-        waitForBump();
-        stopPump();
-    }
-
-    static void remediate() {
-        int temperature = pollTemperature();
-        echo("Initial temperature: " + temperature);
-        double pH = calculatePH(pollPhPin(), temperature);
-        echo("Initial pH: " + pH);
-        while (7.0 < pH || pH < 7.5) {
-            dispenseRemediationFluidVolume(5.0);
-            robot.runMixer(MIXER, 100);
-            pH = calculatePH(pollPhPin(), temperature);
-            echo("pH is now: " + pH);
-        }
-    }
+	static void setServoAngle(int angle) {
+		//robot.moveServo(SERVO, angle);
+		robot.moveBothServos(angle, angle);
+	}
 
 
-    /*************NAVIGATION**************************************************************************/
+	/*************REMEDIATION*************************************************************************/
 
-    static int getSensorData(int pinNumber) {
-        robot.refreshAnalogPins();
-        return robot.getAnalogPin(pinNumber).getValue();
-    }
+	static void dispenseRemediationFluidVolume(double milliliters) {
+		final int MAX_TIME = 30000; // 30 seconds
+		final double MAX_VOLUME = 5.4;   // Most that can be dispensed in MAX_TIME at MAX_SPEED.
+		final double VOLUME_TO_TIME = MAX_TIME/MAX_VOLUME;
+		double time = milliliters * VOLUME_TO_TIME;
+		echo(time);
+		for (int i = 0; i < (int)time/MAX_TIME; i++)
+			robot.runMotor(PUMP, MAX_SPEED, MAX_TIME);
+		echo(((int) time) % MAX_TIME);
+		robot.runMotor(PUMP, MAX_SPEED, ((int)time) % MAX_TIME);
+	}
 
-    static int pollSensorData(int pinNumber) {
-        int sum = 0;
-        int numGoodReads = 0;
-        do{
-            int data = getSensorData(pinNumber);
-            if (data > 0 && data < 1023) {
-                sum += data;
-                numGoodReads++;
-            }
-        }while(numGoodReads < 10);
-        return (int)Math.round((double)sum/numGoodReads);
-    }
+	static void stopPump() {
+		robot.runMotor(PUMP, 0, 0);
+	}
 
-    static String keepCheckingForRFID() {
-        RFIDSensor sensor = new RFIDSensor();
-        sensor.setPort(RFID_PORT);
-        sensor.connect();
+	static void preLoad() {
+		echo("Running.");
+		robot.runMotor(PUMP, MAX_SPEED, 0);
+		echo("Motor running.");
+		robot.sleep(300);
+		waitForBump();
+		echo("Bumped.");
+		stopPump();
+	}
 
-        while(!sensor.hasTag()) sensor.sleep(100);
-        String result = sensor.getTag();
+	static void remediate() {
+		int temperature = pollTemperature();
+		echo("Initial temperature: " + temperature);
+		double tankPH = calculatePH(pollPhPin(), temperature);
+		echo("Initial pH: " + tankPH);
+		while (7.0 < tankPH || tankPH < 7.5) {
+			dispenseRemediationFluidVolume(millilitersToDispense(tankPH, SOLUTION_PH));
+			mix();
+			tankPH = calculatePH(pollPhPin(), temperature);
+			echo("pH is now: " + tankPH);
+		}
+	}
 
-        sensor.close();
-        return result;
-    }
-
-    static int pollPingDistance() {
-        int sum = 0;
-        int numGoodReads = 0;
-        do{
-            int distance = robot.getPing();
-            if (distance > 0 && distance < 100) {
-                sum += distance;
-                numGoodReads++;
-            }
-        }while(numGoodReads < 10);
-        return (int)Math.round((double)sum / numGoodReads);
-    }
-
-    static void waitForBump() {
-        while (true) if (getSensorData(BUMPER_RIGHT_PIN) < 1000 || getSensorData(BUMPER_LEFT_PIN) < 1000)
-            break;
-    }
+	static void mix() {
+		robot.runMixer(MIXER, 5000);
+	}
 
 
-    /*************TESTING******************************************************************************/
+	/*************NAVIGATION**************************************************************************/
 
-    static int pollTemperature() {
-        int sum = 0;
-        int numGoodReads = 0;
-        do{
-            int temperature = robot.getTemperature();
-            if (temperature > 0 && temperature < 100) {
-                sum += temperature;
-                numGoodReads++;
-            }
-        }while(numGoodReads < 10);
-        return (int)Math.round((double)sum/numGoodReads);
-    }
+	static int getSensorData(int pinNumber) {
+		robot.refreshAnalogPins();
+		return robot.getAnalogPin(pinNumber).getValue();
+	}
 
-    static boolean isWet() {
-        return getSensorData(WATER_PIN) < 100;
-    }
+	static int pollSensorData(int pinNumber) {
+		int sum = 0;
+		int numGoodReads = 0;
+		do{
+			int data = getSensorData(pinNumber);
+			if (data > 0 && data < 1024) {
+				sum += data;
+				numGoodReads++;
+			}
+		}while(numGoodReads < 10);
+		return (int)Math.round((double)sum/numGoodReads);
+	}
 
-    static int pollPhPin() {
-        return pollSensorData(PH_PIN);
-    }
+	static String keepCheckingForRFID() {
+		RFIDSensor sensor = new RFIDSensor();
+		sensor.setPort(RFID_PORT);
+		sensor.connect();
 
-    static int pollTurbidityPin() {
-        return pollSensorData(TURBIDITY_PIN);
-    }
+		while(!sensor.hasTag()) sensor.sleep(100);
+		String result = sensor.getTag();
 
-    static double calculateTurbidity(double voltage) {
-        // Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
-        voltage = 3 - voltage;
-        voltage *= 132;
-        voltage += 4;
-        return voltage;
-    }
+		sensor.close();
+		return result;
+	}
 
-    static double calculatePH(double voltage, double temperature) {
-        // Relationship: E = E0 - G(RT/F)2.303pH
-        final double E0 = 1;
-        final double gain = 10;
-        final double R = 8.314;
-        final double nE = 1;
-        final double F = 96500;
-        temperature += 273.15;
-        return (E0 - voltage)/(gain * R * temperature / F / nE *2.303);
-    }
+	static int pollPingDistance() {
+		int sum = 0;
+		int numGoodReads = 0;
+		do{
+			int distance = robot.getPing();
+			if (distance > 0 && distance < 100) {
+				sum += distance;
+				numGoodReads++;
+			}
+		}while(numGoodReads < 10);
+		return (int)Math.round((double)sum / numGoodReads);
+	}
+
+	static void waitForBump() {
+		// 1023 is pressed. Each motor has a threshold for when it's "pressed".
+		while (true) if (getSensorData(BUMPER_RIGHT_PIN) < 900 || getSensorData(BUMPER_LEFT_PIN) < 900)
+			break;
+	}
 
 
-    /*************MISCELLANEOUS************************************************************************/
-    static void setup(){
-        robot = new RXTXRobot();
-        robot.setPort(ROBOT_PORT);
-        robot.connect();
-        robot.setVerbose(true);
-    }
-    static void cleanup(){
-        robot.close();
-    }
-    static<T> void echo(T arg) {
-        System.out.println(arg);
-    }
+	/*************TESTING******************************************************************************/
 
-    static void square() {
-        for (int i = 0; i < 4; i++) {
-            driveThisManyFeet(2.0);
-            robot.resetEncodedMotorPosition(LEFT_MOTOR);
-            robot.resetEncodedMotorPosition(RIGHT_MOTOR);
-            rightAngleTurn(Direction.LEFT);
-            robot.resetEncodedMotorPosition(LEFT_MOTOR);
-            robot.resetEncodedMotorPosition(RIGHT_MOTOR);
-        }
-    }
+	static int pollTemperature() {
+		int sum = 0;
+		int numGoodReads = 0;
+		do{
+			int temperature = robot.getTemperature();
+			if (temperature > 0 && temperature < 100) {
+				sum += temperature;
+				numGoodReads++;
+			}
+		}while(numGoodReads < 10);
+		return (int)Math.round((double)sum/numGoodReads);
+	}
 
-    /*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~*/
-    public static void main(String[] args) {
-        setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
+	static boolean isWet() {
+		return getSensorData(WATER_PIN) < 100;
+	}
+
+	static int pollPhPin() {
+		return pollSensorData(PH_PIN);
+	}
+
+	static int pollTurbidityPin() {
+		return pollSensorData(TURBIDITY_PIN);
+	}
+
+	static double calculateTurbidity(double voltage) {
+		// Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
+		voltage = 3 - voltage;
+		voltage *= 132;
+		voltage += 4;
+		return voltage;
+	}
+
+	static double calculatePH(double voltage, double temperature) {
+		// Relationship: E = E0 - G(RT/F)2.303pH
+		final double E0 = 1;
+		final double gain = 10;
+		final double R = 8.314;
+		final double nE = 1;
+		final double F = 96500;
+		temperature += 273.15;
+		return 14 - ((voltage-512)/96+7);//(E0 - voltage)/(gain * R * temperature / F / nE *2.303);
+	}
+
+	static double concentrationFromPH(double pH) {
+		return Math.pow(10, -1*pH);
+	}
+
+	static double millilitersToDispense(double tankPH, double remediationPH) {
+		double tankVolume = 1000;
+		return concentrationFromPH(tankPH) * tankVolume / concentrationFromPH(remediationPH);
+	}
+
+	static void backupMix() {
+		final int MOTOR_MIX_DISTANCE = 50;
+		for (int i = 0; i < 5; i++) {
+			moveBackwards(MOTOR_MIX_DISTANCE);
+			moveTheMotors(MOTOR_MIX_DISTANCE);
+		}
+
+	}
+
+
+	/*************MISCELLANEOUS************************************************************************/
+	static void setup(){
+		robot = new RXTXRobot();
+		robot.setPort(ROBOT_PORT);
+		robot.connect();
+		robot.setVerbose(true);
+		robot.setMixerSpeed(250);
+		robot.sleep(10000);
+		setServoAngle(0);
+		robot.setResetOnClose(false);
+	}
+	static void cleanup(){
+		robot.close();
+	}
+	static<T> void echo(T arg) {
+		System.out.println(arg);
+	}
+
+
+
+
+	/*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+	public static void main(String[] args) {
+		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 
         /*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
-        //driveToGetRFID();
-        //moveThenHitAWallThenTurnLeft();
-        //square();
+		//driveToGetRFID();
+		//moveThenHitAWallThenTurnLeft();
+		//square();
         /*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
-        //moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
-        //printAllTheData();
-        //remediateAndMix();
-        //int temperature = pollTemperature();
-        //for (int i = 0; i < 2; i ++)
-        //    echo (calculatePH(pollPhPin(), pollTemperature()));
+		//moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
+		//robot.sleep(10000);
+		//printAllTheData();
+		//remediateAndMix();
+        /*int temperature = pollTemperature();
+        for (int i = 0; i < 2; i ++)
+            echo (calculatePH(pollPhPin(), pollTemperature())); */
 
-        /*~~~~~~~~~ Making things not die. ~~~~~~~~~~~~~~~*/
-        //echo (pollPhPin());
-        //echo(pollTemperature());
-        //echo(pollTurbidityPin());
-        //driveThisManyFeet(3);
-        //setServoAngle(20);
-        //waitForBump();
-        cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
-    }
+
+        /*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
+		//echo ("pH OUTPUT: " + pollPhPin());
+		//preLoad();
+		//echo("TEMPERATURE: " + pollTemperature());
+		//echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
+		//robot.runMixer(MIXER, 5000);
+		//driveThisManyFeet(3);
+        /*for (int i = 0; i < 5; i++) {
+            setServoAngle(20);
+            setServoAngle(70);
+        }*/
+		//waitForBump();
+		//preLoad();
+		//mix();
+		//dispenseRemediationFluidVolume(5.0);
+		preLoad();
+		//backupMix();
+		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
+	}
 
 }

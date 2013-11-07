@@ -34,7 +34,7 @@ public class Main {
 		SOLUTION_PH = 5.0;                      // TYPE WHATEVER THEY TELL YOU.
 	}
 	// Connection constants.
-	static final String ROBOT_PORT = "/dev/tty.usbmodemfa1431";           //DEPENDS ON YOUR COMPUTER
+	static final String ROBOT_PORT = "/dev/tty.usbmodemfa141";           //DEPENDS ON YOUR COMPUTER
 	static final String ALTERNATE_ROBOT_PORT = "/dev/tty.usbmodemfd1331"; //DEPENDS ON YOUR COMPUTER
 	static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
 	static RXTXRobot robot;
@@ -290,15 +290,16 @@ public class Main {
 		return voltage;
 	}
 
-	static double calculatePH(double voltage, double temperature) {
+	static double calculatePH(double input, double temperature) {
 		// Relationship: E = E0 - G(RT/F)2.303pH
 		final double E0 = 1;
-		final double gain = 10;
+		final double gain = 9.2;
 		final double R = 8.314;
 		final double nE = 1;
 		final double F = 96500;
 		temperature += 273.15;
-		return 14 - ((voltage-512)/96+7);//(E0 - voltage)/(gain * R * temperature / F / nE *2.303);
+		return 1195.17 - 96.5 * input;
+		//return 14 - ((input-512)/96+7);//(E0 - voltage)/(gain * R * temperature / F / nE *2.303);
 	}
 
 	static double concentrationFromPH(double pH) {
@@ -327,7 +328,7 @@ public class Main {
 		robot.connect();
 		robot.setVerbose(true);
 		robot.setMixerSpeed(250);
-		robot.sleep(10000);
+		//robot.sleep(10000);
 		setServoAngle(0);
 		robot.setResetOnClose(false);
 	}
@@ -360,7 +361,7 @@ public class Main {
 
 
         /*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		//echo ("pH OUTPUT: " + pollPhPin());
+		echo ("pH OUTPUT: " + pollPhPin());
 		//preLoad();
 		//echo("TEMPERATURE: " + pollTemperature());
 		//echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
@@ -374,7 +375,7 @@ public class Main {
 		//preLoad();
 		//mix();
 		//dispenseRemediationFluidVolume(5.0);
-		preLoad();
+		//preLoad();
 		//backupMix();
 		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 	}

@@ -34,7 +34,7 @@ public class Main {
 		SOLUTION_PH = 5.0;                      // TYPE WHATEVER THEY TELL YOU.
 	}
 	// Connection constants.
-	static final String ROBOT_PORT = "/dev/tty.usbmodemfa141";           //DEPENDS ON YOUR COMPUTER
+	static final String ROBOT_PORT = "/dev/tty.usbmodem1411";           //DEPENDS ON YOUR COMPUTER
 	static final String ALTERNATE_ROBOT_PORT = "/dev/tty.usbmodemfd1331"; //DEPENDS ON YOUR COMPUTER
 	static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
 	static RXTXRobot robot;
@@ -44,7 +44,7 @@ public class Main {
 	static double pH;
 	static double turbidity;
 
-	// SPRINT 3 REQUIREMENTS ***************************************************************************
+	/* SPRINT 3 REQUIREMENTS ***************************************************************************
 
 	static void square() {
 		for (int i = 0; i < 4; i++) {
@@ -107,7 +107,7 @@ public class Main {
 		mix();
 	}
 
-	// END OF REQUIREMENTS *****************************************************************************
+	// END OF REQUIREMENTS *****************************************************************************/
 
 	/*************BELOW THIS LINE DON'T FUCK WITH ME.**************************************************/
 
@@ -215,7 +215,7 @@ public class Main {
 		int numGoodReads = 0;
 		do{
 			int data = getSensorData(pinNumber);
-			if (data > 0 && data < 1024) {
+			if (data >= 0 && data < 1024) {
 				sum += data;
 				numGoodReads++;
 			}
@@ -284,10 +284,12 @@ public class Main {
 
 	static double calculateTurbidity(double voltage) {
 		// Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
-		voltage = 3 - voltage;
+        final double TURBIDITY_PIN_MAX_VALUE = 100.0;
+        return 5;
+		/*voltage = 3 - voltage;
 		voltage *= 132;
 		voltage += 4;
-		return voltage;
+		return voltage;*/
 	}
 
 	static double calculatePH(double input, double temperature) {
@@ -361,10 +363,10 @@ public class Main {
 
 
         /*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		echo ("pH OUTPUT: " + pollPhPin());
+		//echo ("pH OUTPUT: " + pollPhPin());
 		//preLoad();
 		//echo("TEMPERATURE: " + pollTemperature());
-		//echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
+		echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
 		//robot.runMixer(MIXER, 5000);
 		//driveThisManyFeet(3);
         /*for (int i = 0; i < 5; i++) {

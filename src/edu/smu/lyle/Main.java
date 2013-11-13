@@ -1,7 +1,7 @@
 package edu.smu.lyle;
 
-import gnu.io.NoSuchPortException;
 import rxtxrobot.*;
+import java.util.*;
 public class Main {
 
 	// Arm Angles
@@ -15,8 +15,8 @@ public class Main {
 	static final int TURBIDITY_PIN = 4;
 	static final int WATER_PIN = 5;
 	// Motors
-	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;
-	static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;
+	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;  // Pin 5
+	static final int RIGHT_MOTOR = RXTXRobot.MOTOR2; // Pin 6
 	static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
 	static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
 	static final int SERVO = RXTXRobot.SERVO1; // Pin 10
@@ -40,6 +40,9 @@ public class Main {
 	static RXTXRobot robot;
 	// State variables (UNUSED)
 	static String challenge;
+	static {
+		challenge = "";
+	}
 	static int temperature;
 	static double pH;
 	static double turbidity;
@@ -62,7 +65,59 @@ public class Main {
 		moveBackwards((int) (0.25 * FOOT_TO_CLICK_CONVERSION));
 		rightAngleTurn(Direction.LEFT);
 	}
+		*/
 
+	static void pointInShortestDirection() {
+		ArrayList a = new ArrayList<Integer>();
+		for (int i = 0; i < 4; i++) {
+			int b = pollPhPin();
+			a.add(b);
+			if (i != 3) rightAngleTurn(Direction.LEFT);
+		}
+		int minIndex = a.indexOf(Collections.min(a));
+		for (int i = 0; i < minIndex; i++) {
+			rightAngleTurn(Direction.LEFT);
+		}
+	}
+
+	static void align() {
+		assert bumperPressed(Direction.RIGHT) || bumperPressed(Direction.LEFT);
+		runSlowIndefinitely();
+		while (true)
+			if (bumperPressed(Direction.LEFT) && bumperPressed(Direction.RIGHT))
+				break;
+		stopMotors();
+	}
+
+
+	static void turnCapableRFID() {
+		RFIDSensor sensor = new RFIDSensor();
+		sensor.setPort(RFID_PORT);
+		sensor.connect();
+		runMotorsIndefinitely();
+		while (true) {
+			if (sensor.hasTag())
+				break;
+			if (bumperPressed(Direction.LEFT) || bumperPressed(Direction.RIGHT))
+				rightAngleTurn(Direction.LEFT);
+		}
+
+		String result = sensor.getTag();
+
+		sensor.close();
+		Main.challenge = result;
+	}
+
+	static void findRFID() {
+		pointInShortestDirection();
+		runUntilBumped();
+		align();
+		moveBackwards((int)(0.5 * FOOT_TO_CLICK_CONVERSION));
+		rightAngleTurn(Direction.LEFT);
+		turnCapableRFID();
+	}
+
+		/*
 	static enum ArmHeight {LOW, MEDIUM, HIGH}
 	static void moveArm (ArmHeight height) {
 		int angle = 0;
@@ -121,6 +176,10 @@ public class Main {
 
 	static void runMotorsIndefinitely() {
 		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, -1 * MAX_SPEED, 0);
+	}
+
+	static void runSlowIndefinitely() {
+		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT/50), RIGHT_MOTOR, -1 * MAX_SPEED/50, 0);
 	}
 
 	static void stopMotors() {
@@ -248,9 +307,14 @@ public class Main {
 		return (int)Math.round((double)sum / numGoodReads);
 	}
 
+	static boolean bumperPressed(Direction direction) {
+		int bumperValue = (direction == Direction.LEFT) ? getSensorData(BUMPER_LEFT_PIN) : getSensorData(BUMPER_RIGHT_PIN);
+		return bumperValue < 900;
+	}
+
 	static void waitForBump() {
 		// 1023 is pressed. Each motor has a threshold for when it's "pressed".
-		while (true) if (getSensorData(BUMPER_RIGHT_PIN) < 900 || getSensorData(BUMPER_LEFT_PIN) < 900)
+		while (true) if (bumperPressed(Direction.LEFT) || bumperPressed(Direction.RIGHT))
 			break;
 	}
 
@@ -284,8 +348,8 @@ public class Main {
 
 	static double calculateTurbidity(double voltage) {
 		// Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
-        final double TURBIDITY_PIN_MAX_VALUE = 100.0;
-        return 5;
+		final double TURBIDITY_PIN_MAX_VALUE = 100.0;
+		return 5;
 		/*voltage = 3 - voltage;
 		voltage *= 132;
 		voltage += 4;
@@ -348,31 +412,31 @@ public class Main {
 	public static void main(String[] args) {
 		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 
-        /*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
+				/*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
 		//driveToGetRFID();
 		//moveThenHitAWallThenTurnLeft();
 		//square();
-        /*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
+				/*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
 		//moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
 		//robot.sleep(10000);
 		//printAllTheData();
 		//remediateAndMix();
-        /*int temperature = pollTemperature();
-        for (int i = 0; i < 2; i ++)
-            echo (calculatePH(pollPhPin(), pollTemperature())); */
+				/*int temperature = pollTemperature();
+				for (int i = 0; i < 2; i ++)
+						echo (calculatePH(pollPhPin(), pollTemperature())); */
 
 
-        /*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
+				/*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
 		//echo ("pH OUTPUT: " + pollPhPin());
 		//preLoad();
 		//echo("TEMPERATURE: " + pollTemperature());
 		echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
 		//robot.runMixer(MIXER, 5000);
 		//driveThisManyFeet(3);
-        /*for (int i = 0; i < 5; i++) {
-            setServoAngle(20);
-            setServoAngle(70);
-        }*/
+				/*for (int i = 0; i < 5; i++) {
+						setServoAngle(20);
+						setServoAngle(70);
+				}*/
 		//waitForBump();
 		//preLoad();
 		//mix();

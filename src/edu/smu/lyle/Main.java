@@ -34,7 +34,7 @@ public class Main {
 		SOLUTION_PH = 5.0;                      // TYPE WHATEVER THEY TELL YOU.
 	}
 	// Connection constants.
-	static final String ROBOT_PORT = "/dev/tty.usbmodem1411";           //DEPENDS ON YOUR COMPUTER
+	static final String ROBOT_PORT = "/dev/tty.usbmodem14131";           //DEPENDS ON YOUR COMPUTER
 	static final String ALTERNATE_ROBOT_PORT = "/dev/tty.usbmodemfd1331"; //DEPENDS ON YOUR COMPUTER
 	static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
 	static RXTXRobot robot;
@@ -47,7 +47,7 @@ public class Main {
 	static double pH;
 	static double turbidity;
 
-	/* SPRINT 3 REQUIREMENTS ***************************************************************************
+	// SPRINT 3 REQUIREMENTS ***************************************************************************
 
 	static void square() {
 		for (int i = 0; i < 4; i++) {
@@ -65,7 +65,6 @@ public class Main {
 		moveBackwards((int) (0.25 * FOOT_TO_CLICK_CONVERSION));
 		rightAngleTurn(Direction.LEFT);
 	}
-		*/
 
 	static void pointInShortestDirection() {
 		ArrayList a = new ArrayList<Integer>();
@@ -81,16 +80,15 @@ public class Main {
 	}
 
 	static void align() {
-		assert bumperPressed(Direction.RIGHT) || bumperPressed(Direction.LEFT);
+		assert eitherBumperPressed();
 		runSlowIndefinitely();
 		while (true)
-			if (bumperPressed(Direction.LEFT) && bumperPressed(Direction.RIGHT))
+			if (bothBumpersPressed())
 				break;
 		stopMotors();
 	}
 
-
-	static void turnCapableRFID() {
+	static void lookForRFIDwithTurns() {
 		RFIDSensor sensor = new RFIDSensor();
 		sensor.setPort(RFID_PORT);
 		sensor.connect();
@@ -98,8 +96,11 @@ public class Main {
 		while (true) {
 			if (sensor.hasTag())
 				break;
-			if (bumperPressed(Direction.LEFT) || bumperPressed(Direction.RIGHT))
+			if (eitherBumperPressed()) {
+				stopMotors();
 				rightAngleTurn(Direction.LEFT);
+				runMotorsIndefinitely();
+			}
 		}
 
 		String result = sensor.getTag();
@@ -114,10 +115,28 @@ public class Main {
 		align();
 		moveBackwards((int)(0.5 * FOOT_TO_CLICK_CONVERSION));
 		rightAngleTurn(Direction.LEFT);
-		turnCapableRFID();
+		lookForRFIDwithTurns();
 	}
 
-		/*
+	static void findGap() {
+		runMotorsIndefinitely();
+		while (true) {
+			if (eitherBumperPressed()) {
+				if (pollPingDistance() > 30)
+					break;
+				else {
+					stopMotors();
+					rightAngleTurn(Direction.LEFT);
+					runMotorsIndefinitely();
+				}
+			}
+		}
+		moveTheMotors((int)(6 * FOOT_TO_CLICK_CONVERSION));
+		rightAngleTurn(Direction.RIGHT);
+		moveTheMotors((int)(4 * FOOT_TO_CLICK_CONVERSION));
+	}
+
+
 	static enum ArmHeight {LOW, MEDIUM, HIGH}
 	static void moveArm (ArmHeight height) {
 		int angle = 0;
@@ -307,14 +326,26 @@ public class Main {
 		return (int)Math.round((double)sum / numGoodReads);
 	}
 
+	static final int BUMPER_THRESHOLD = 900;
+
 	static boolean bumperPressed(Direction direction) {
+		robot.refreshAnalogPins();
 		int bumperValue = (direction == Direction.LEFT) ? getSensorData(BUMPER_LEFT_PIN) : getSensorData(BUMPER_RIGHT_PIN);
-		return bumperValue < 900;
+		return bumperValue < BUMPER_THRESHOLD;
+	}
+
+	static boolean eitherBumperPressed() {
+		robot.refreshAnalogPins();
+		return (getSensorData(BUMPER_LEFT_PIN) < BUMPER_THRESHOLD || getSensorData(BUMPER_RIGHT_PIN) < BUMPER_THRESHOLD);
+	}
+
+	static boolean bothBumpersPressed() {
+		return (getSensorData(BUMPER_LEFT_PIN) < BUMPER_THRESHOLD && getSensorData(BUMPER_RIGHT_PIN) < BUMPER_THRESHOLD);
 	}
 
 	static void waitForBump() {
 		// 1023 is pressed. Each motor has a threshold for when it's "pressed".
-		while (true) if (bumperPressed(Direction.LEFT) || bumperPressed(Direction.RIGHT))
+		while (true) if (eitherBumperPressed())
 			break;
 	}
 
@@ -390,15 +421,17 @@ public class Main {
 	/*************MISCELLANEOUS************************************************************************/
 	static void setup(){
 		robot = new RXTXRobot();
+		robot.setVerbose(true);
 		robot.setPort(ROBOT_PORT);
 		robot.connect();
-		robot.setVerbose(true);
 		robot.setMixerSpeed(250);
 		//robot.sleep(10000);
 		setServoAngle(0);
 		robot.setResetOnClose(false);
 	}
 	static void cleanup(){
+		setServoAngle(0);
+		//robot.setResetOnClose(true);
 		robot.close();
 	}
 	static<T> void echo(T arg) {
@@ -413,36 +446,39 @@ public class Main {
 		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 
 				/*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
-		//driveToGetRFID();
-		//moveThenHitAWallThenTurnLeft();
-		//square();
+		/*driveToGetRFID();
+		moveThenHitAWallThenTurnLeft();
+		square();
 				/*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
-		//moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
-		//robot.sleep(10000);
-		//printAllTheData();
-		//remediateAndMix();
-				/*int temperature = pollTemperature();
+		/*moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
+		robot.sleep(10000);
+		printAllTheData();
+		remediateAndMix();
+		int temperature = pollTemperature();
 				for (int i = 0; i < 2; i ++)
-						echo (calculatePH(pollPhPin(), pollTemperature())); */
+						echo (calculatePH(pollPhPin(), pollTemperature()));
 
 
 				/*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		//echo ("pH OUTPUT: " + pollPhPin());
-		//preLoad();
-		//echo("TEMPERATURE: " + pollTemperature());
+		/*echo ("pH OUTPUT: " + pollPhPin());
+		preLoad();
+		echo("TEMPERATURE: " + pollTemperature());
 		echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
-		//robot.runMixer(MIXER, 5000);
-		//driveThisManyFeet(3);
-				/*for (int i = 0; i < 5; i++) {
+		robot.runMixer(MIXER, 5000);
+		driveThisManyFeet(3);
+				for (int i = 0; i < 5; i++) {
 						setServoAngle(20);
 						setServoAngle(70);
-				}*/
-		//waitForBump();
-		//preLoad();
-		//mix();
-		//dispenseRemediationFluidVolume(5.0);
-		//preLoad();
-		//backupMix();
+				}
+		waitForBump();
+		preLoad();
+		mix();
+		dispenseRemediationFluidVolume(5.0);
+		preLoad();
+		backupMix();*/
+		//runUntilBumped();
+		setServoAngle(100);
+		//echo(keepCheckingForRFID());
 		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 	}
 

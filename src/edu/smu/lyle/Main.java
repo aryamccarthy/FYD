@@ -25,7 +25,7 @@ public class Main {
 	static {
 		MOTOR_CONSTANT = 1.17;
 	}
-	static final int MAX_SPEED = 500;
+	static final int MAX_SPEED = -500;
 	static final int FOOT_TO_CLICK_CONVERSION = 590;   // BIGGER NUMBER -> FARTHER DISTANCE
 	static final int TURN_CONSTANT = 330;              // BIGGER NUMBER -> BIGGER ANGLE
 	// Dispensing constants.
@@ -35,7 +35,6 @@ public class Main {
 	}
 	// Connection constants.
 	static final String ROBOT_PORT = "/dev/tty.usbmodem14131";           //DEPENDS ON YOUR COMPUTER
-	static final String ALTERNATE_ROBOT_PORT = "/dev/tty.usbmodemfd1331"; //DEPENDS ON YOUR COMPUTER
 	static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
 	static RXTXRobot robot;
 	// State variables (UNUSED)
@@ -206,11 +205,11 @@ public class Main {
 	}
 
 	static void moveTheMotors(int ticks) {
-		robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED), ticks, RIGHT_MOTOR, -1 * MAX_SPEED, ticks);
+		robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED), ticks, RIGHT_MOTOR, MAX_SPEED, ticks);
 	}
 
 	static void moveBackwards(int ticks) {
-		robot.runEncodedMotor(LEFT_MOTOR, -1 * (int)(MAX_SPEED/MOTOR_CONSTANT), ticks, RIGHT_MOTOR, MAX_SPEED, ticks);
+		robot.runEncodedMotor(LEFT_MOTOR, -1 * (int)(MAX_SPEED/MOTOR_CONSTANT), ticks, RIGHT_MOTOR, -1 *MAX_SPEED, ticks);
 	}
 
 	static void runUntilBumped() {
@@ -221,8 +220,8 @@ public class Main {
 
 	static enum  Direction {LEFT, RIGHT}
 	static void runMotorsToTurn(Direction direction, int duration) {
-		int dir = (direction == Direction.RIGHT) ? -1 : 1;
-		robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED /MOTOR_CONSTANT), duration, RIGHT_MOTOR, dir * MAX_SPEED, duration);
+		int dir = (direction == Direction.RIGHT) ? 1 : -1;
+		robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED /MOTOR_CONSTANT), duration, RIGHT_MOTOR, -1 * dir * MAX_SPEED, duration);
 	}
 
 	static void rightAngleTurn(Direction direction) {
@@ -476,10 +475,24 @@ public class Main {
 		dispenseRemediationFluidVolume(5.0);
 		preLoad();
 		backupMix();*/
+		//rightAngleTurn(Direction.LEFT);
+		//robot.runEncodedMotor(LEFT_MOTOR, MAX_SPEED, 40);
+		echo(pollPingDistance());
+		//moveBackwards(30);
+		//driveThisManyFeet(2);
 		//runUntilBumped();
-		setServoAngle(100);
+		//setServoAngle(100);
 		//echo(keepCheckingForRFID());
 		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 	}
 
 }
+
+/* WHAT WORKS RIGHT NOW?
+[X] Connection
+[X] RFID
+[X] Servo
+[X] Motion
+[X] Bump
+[X] Ping
+*/

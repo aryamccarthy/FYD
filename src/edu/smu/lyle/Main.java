@@ -5,6 +5,8 @@ import java.util.*;
 public class Main {
 
 	// Arm Angles
+	static final int LIMBO_ANGLE = 40;
+
 	static final int HIGH_ANGLE = 0;
 	static final int MEDIUM_ANGLE = 110;
 	static final int LOW_ANGLE = 140;
@@ -21,13 +23,13 @@ public class Main {
 	static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
 	static final int SERVO = RXTXRobot.SERVO1; // Pin 10
 	// Movement constants
-	static final double MOTOR_CONSTANT;                // BIGGER NUMBERS -> MORE RIGHT SKEW
+	public static final double MOTOR_CONSTANT;                // BIGGER NUMBERS -> MORE LEFT SKEW
 	static {
-		MOTOR_CONSTANT = 1.17;
+		MOTOR_CONSTANT = 1.05;
 	}
 	static final int MAX_SPEED = -500;
-	static final int FOOT_TO_CLICK_CONVERSION = 590;   // BIGGER NUMBER -> FARTHER DISTANCE
-	static final int TURN_CONSTANT = 330;              // BIGGER NUMBER -> BIGGER ANGLE
+	static final int FOOT_TO_CLICK_CONVERSION = 268;   // BIGGER NUMBER -> FARTHER DISTANCE
+	static final int TURN_CONSTANT = 258;              // BIGGER NUMBER -> BIGGER ANGLE
 	// Dispensing constants.
 	static final double SOLUTION_PH;
 	static {
@@ -68,23 +70,15 @@ public class Main {
 	static void pointInShortestDirection() {
 		ArrayList a = new ArrayList<Integer>();
 		for (int i = 0; i < 4; i++) {
-			int b = pollPhPin();
+			int b = pollPingDistance();
 			a.add(b);
 			if (i != 3) rightAngleTurn(Direction.LEFT);
 		}
 		int minIndex = a.indexOf(Collections.min(a));
-		for (int i = 0; i < minIndex; i++) {
+		echo(minIndex);
+		for (int i = -1; i < minIndex; i++) {
 			rightAngleTurn(Direction.LEFT);
 		}
-	}
-
-	static void align() {
-		assert eitherBumperPressed();
-		runSlowIndefinitely();
-		while (true)
-			if (bothBumpersPressed())
-				break;
-		stopMotors();
 	}
 
 	static void lookForRFIDwithTurns() {
@@ -111,7 +105,6 @@ public class Main {
 	static void findRFID() {
 		pointInShortestDirection();
 		runUntilBumped();
-		align();
 		moveBackwards((int)(0.5 * FOOT_TO_CLICK_CONVERSION));
 		rightAngleTurn(Direction.LEFT);
 		lookForRFIDwithTurns();
@@ -154,9 +147,18 @@ public class Main {
 
 		String result = keepCheckingForRFID();
 
-		if (result.equals("66006C11F9E2")) result = "\nThe location is Dadaab\nThe obstacle is a limbo bar.\nThe challenge is an elevated well.\n";
-		else if (result.equals("66006C432D64")) result = "\nThe location is Fish Town.\nThe obstacle is a a maze.\nThe challenge is a ground-level water basin.\n";
-		else if (result.equals("66006C001F15")) result = "\nThe location is Ali Ade.\nThe obstacle is an opening in a wall.\nThe challenge is an underground well.\n";
+		if (result.equals("66006C11F9E2")) result =
+				"\nThe location is Dadaab\n" +
+				"The obstacle is a limbo bar.\n" +
+				"The challenge is an elevated well.\n";
+		else if (result.equals("66006C432D64")) result =
+				"\nThe location is Fish Town.\n" +
+				"The obstacle is a a maze.\n" +
+				"The challenge is a ground-level water basin.\n";
+		else if (result.equals("66006C001F15")) result =
+				"\nThe location is Ali Ade.\n" +
+				"The obstacle is an opening in a wall.\n" +
+				"The challenge is an underground well.\n";
 		else result = "Undefined tag.";
 
 		echo(result);
@@ -191,13 +193,15 @@ public class Main {
 		robot.resetEncodedMotorPosition(LEFT_MOTOR);
 		robot.resetEncodedMotorPosition(RIGHT_MOTOR);
 	}
-
+	static void lessThanRightAngleTurn(Direction direction) {
+		runMotorsToTurn(direction, TURN_CONSTANT*4/5);
+	}
 	static void runMotorsIndefinitely() {
-		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, -1 * MAX_SPEED, 0);
+		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, MAX_SPEED, 0);
 	}
 
 	static void runSlowIndefinitely() {
-		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT/50), RIGHT_MOTOR, -1 * MAX_SPEED/50, 0);
+		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT/50), RIGHT_MOTOR,MAX_SPEED/50, 0);
 	}
 
 	static void stopMotors() {
@@ -317,7 +321,7 @@ public class Main {
 		int numGoodReads = 0;
 		do{
 			int distance = robot.getPing();
-			if (distance > 0 && distance < 100) {
+			if (distance > 0 && distance < 1020) {
 				sum += distance;
 				numGoodReads++;
 			}
@@ -423,7 +427,7 @@ public class Main {
 		robot.setVerbose(true);
 		robot.setPort(ROBOT_PORT);
 		robot.connect();
-		robot.setMixerSpeed(250);
+		//robot.setMixerSpeed(250);
 		//robot.sleep(10000);
 		setServoAngle(0);
 		robot.setResetOnClose(false);
@@ -436,8 +440,6 @@ public class Main {
 	static<T> void echo(T arg) {
 		System.out.println(arg);
 	}
-
-
 
 
 	/*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -477,22 +479,64 @@ public class Main {
 		backupMix();*/
 		//rightAngleTurn(Direction.LEFT);
 		//robot.runEncodedMotor(LEFT_MOTOR, MAX_SPEED, 40);
-		echo(pollPingDistance());
-		//moveBackwards(30);
+		//setServoAngle(90);
+		//echo("Temperature: " + pollTemperature());
+		//echo("pH: " + pollPhPin());
+		//echo(pollPingDistance());
+		//moveBackwards(300);
 		//driveThisManyFeet(2);
 		//runUntilBumped();
 		//setServoAngle(100);
+		//preLoad();
+		//square();
+		//pointInShortestDirection();
+		//runUntilBumped();
+		//runMotorsIndefinitely();
+		//driveThisManyFeet(3.0);
+		//echo (keepCheckingForRFID());
+		//moveBackwards((int)(0.2*FOOT_TO_CLICK_CONVERSION));
+		//lessThanRightAngleTurn(Direction.LEFT);
+		//driveToGetRFID();
+		//lookForRFIDwithTurns();
+		//driveThisManyFeet(7);
+		//runUntilBumped();
+		//rightAngleTurn(Direction.RIGHT);
+		//robot.runMotor(LEFT_MOTOR, MAX_SPEED, 10000);
+		//robot.runMotor(LEFT_MOTOR, MAX_SPEED * -1, 10000);
+		//runUntilBumped();
 		//echo(keepCheckingForRFID());
+		driveThisManyFeet(7);
+		rightAngleTurn(Direction.RIGHT);
+		driveThisManyFeet(4);
 		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 	}
+	static void slit() {
+		while (true) {
+			driveThisManyFeet(7.0);
+			if (!eitherBumperPressed()) {
+				rightAngleTurn(Direction.RIGHT);
+				driveThisManyFeet(4.0);
+				if (!eitherBumperPressed())
+					break;
+				else {
+					moveBackwards((int)(0.1 * FOOT_TO_CLICK_CONVERSION));
+					rightAngleTurn(Direction.LEFT);
+				}
+			}
+		}
+		echo("Made it through the slit!");
+	}
 
+	static void maze() {
+		for (int i = 0; i < 2; i++) {
+			rightAngleTurn(Direction.RIGHT);
+		}
+		while (true) {
+			runUntilBumped();
+			rightAngleTurn(Direction.RIGHT);
+
+		}
+	}
 }
-
-/* WHAT WORKS RIGHT NOW?
-[X] Connection
-[X] RFID
-[X] Servo
-[X] Motion
-[X] Bump
-[X] Ping
-*/
+//
+// HOLY SHIT RUNNING INTO WALLS MAKES US FACE THE WALL.

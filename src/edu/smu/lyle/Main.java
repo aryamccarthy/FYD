@@ -17,26 +17,26 @@ public class Main {
 	static final int TURBIDITY_PIN = 4;
 	static final int WATER_PIN = 5;
 	// Motors
-	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;  // Pin 5
-	static final int RIGHT_MOTOR = RXTXRobot.MOTOR2; // Pin 6
-	static final int PUMP = RXTXRobot.MOTOR3;    // Pin 7
-	static final int MIXER = RXTXRobot.MOTOR4;  // Pin 8
-	static final int SERVO = RXTXRobot.SERVO1; // Pin 10
+	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;   // Pin 5
+	static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;  // Pin 6
+	static final int PUMP = RXTXRobot.MOTOR3;         // Pin 7
+	static final int MIXER = RXTXRobot.MOTOR4;        // Pin 8
+	static final int SERVO = RXTXRobot.SERVO1;        // Pin 10
 	// Movement constants
-	public static final double MOTOR_CONSTANT;                // BIGGER NUMBERS -> MORE LEFT SKEW
+	public static final double MOTOR_CONSTANT;        // BIGGER NUMBERS -> MORE LEFT SKEW
 	static {
 		MOTOR_CONSTANT = 1.05;
 	}
 	static final int MAX_SPEED = -500;
 	static final int FOOT_TO_CLICK_CONVERSION = 268;   // BIGGER NUMBER -> FARTHER DISTANCE
-	static final int TURN_CONSTANT = 258;              // BIGGER NUMBER -> BIGGER ANGLE
+	static final int TURN_CONSTANT = 268;//258              // BIGGER NUMBER -> BIGGER ANGLE
 	// Dispensing constants.
 	static final double SOLUTION_PH;
 	static {
 		SOLUTION_PH = 5.0;                      // TYPE WHATEVER THEY TELL YOU.
 	}
 	// Connection constants.
-	static final String ROBOT_PORT = "/dev/tty.usbmodem14131";           //DEPENDS ON YOUR COMPUTER
+	static final String ROBOT_PORT = "/dev/tty.usbmodem14131";            //DEPENDS ON YOUR COMPUTER
 	static final String RFID_PORT = "/dev/tty.usbserial-A901JWCW";        //DEPENDS ON YOUR COMPUTER
 	static RXTXRobot robot;
 	// State variables (UNUSED)
@@ -242,14 +242,14 @@ public class Main {
 
 	static void dispenseRemediationFluidVolume(double milliliters) {
 		final int MAX_TIME = 30000; // 30 seconds
-		final double MAX_VOLUME = 5.4;   // Most that can be dispensed in MAX_TIME at MAX_SPEED.
+		final double MAX_VOLUME = 2.55;   // Most that can be dispensed in MAX_TIME at MAX_SPEED.
 		final double VOLUME_TO_TIME = MAX_TIME/MAX_VOLUME;
 		double time = milliliters * VOLUME_TO_TIME;
 		echo(time);
 		for (int i = 0; i < (int)time/MAX_TIME; i++)
-			robot.runMotor(PUMP, MAX_SPEED, MAX_TIME);
+			robot.runMotor(PUMP, -1 * MAX_SPEED, MAX_TIME);
 		echo(((int) time) % MAX_TIME);
-		robot.runMotor(PUMP, MAX_SPEED, ((int)time) % MAX_TIME);
+		robot.runMotor(PUMP, -1 * MAX_SPEED, ((int)time) % MAX_TIME);
 	}
 
 	static void stopPump() {
@@ -258,7 +258,7 @@ public class Main {
 
 	static void preLoad() {
 		echo("Running.");
-		robot.runMotor(PUMP, MAX_SPEED, 0);
+		robot.runMotor(PUMP, -1 * MAX_SPEED, 0);
 		echo("Motor running.");
 		robot.sleep(300);
 		waitForBump();
@@ -267,16 +267,20 @@ public class Main {
 	}
 
 	static void remediate() {
+		for (int i =1; i <= 10; i ++) {
+			setServoAngle(10 * i);
+		}
 		int temperature = pollTemperature();
 		echo("Initial temperature: " + temperature);
 		double tankPH = calculatePH(pollPhPin(), temperature);
 		echo("Initial pH: " + tankPH);
-		while (7.0 < tankPH || tankPH < 7.5) {
+		while (6.8 < tankPH || tankPH < 7.2) {
 			dispenseRemediationFluidVolume(millilitersToDispense(tankPH, SOLUTION_PH));
 			mix();
 			tankPH = calculatePH(pollPhPin(), temperature);
 			echo("pH is now: " + tankPH);
 		}
+		setServoAngle(0);
 	}
 
 	static void mix() {
@@ -321,6 +325,7 @@ public class Main {
 		int numGoodReads = 0;
 		do{
 			int distance = robot.getPing();
+
 			if (distance > 0 && distance < 1020) {
 				sum += distance;
 				numGoodReads++;
@@ -329,7 +334,7 @@ public class Main {
 		return (int)Math.round((double)sum / numGoodReads);
 	}
 
-	static final int BUMPER_THRESHOLD = 900;
+	static final int BUMPER_THRESHOLD = 945;
 
 	static boolean bumperPressed(Direction direction) {
 		robot.refreshAnalogPins();
@@ -380,10 +385,10 @@ public class Main {
 		return pollSensorData(TURBIDITY_PIN);
 	}
 
-	static double calculateTurbidity(double voltage) {
+	static double calculateTurbidity(double input) {
 		// Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
 		final double TURBIDITY_PIN_MAX_VALUE = 100.0;
-		return 5;
+		return 726.121-2.7886 * input;
 		/*voltage = 3 - voltage;
 		voltage *= 132;
 		voltage += 4;
@@ -392,13 +397,13 @@ public class Main {
 
 	static double calculatePH(double input, double temperature) {
 		// Relationship: E = E0 - G(RT/F)2.303pH
-		final double E0 = 1;
-		final double gain = 9.2;
-		final double R = 8.314;
-		final double nE = 1;
-		final double F = 96500;
-		temperature += 273.15;
-		return 1195.17 - 96.5 * input;
+		//final double E0 = 1;
+		//final double gain = 9.2;
+		//final double R = 8.314;
+		//final double nE = 1;
+		//final double F = 96500;
+		//temperature += 273.15;
+		return 12.3128- (0.0000342684 * (temperature+273.15) * input);
 		//return 14 - ((input-512)/96+7);//(E0 - voltage)/(gain * R * temperature / F / nE *2.303);
 	}
 
@@ -427,12 +432,14 @@ public class Main {
 		robot.setVerbose(true);
 		robot.setPort(ROBOT_PORT);
 		robot.connect();
-		//robot.setMixerSpeed(250);
-		//robot.sleep(10000);
+		robot.setMixerSpeed(75);
 		setServoAngle(0);
 		robot.setResetOnClose(false);
 	}
 	static void cleanup(){
+		//setServoAngle(45);
+		//setServoAngle(30);
+		//setServoAngle(15);
 		setServoAngle(0);
 		//robot.setResetOnClose(true);
 		robot.close();
@@ -441,75 +448,18 @@ public class Main {
 		System.out.println(arg);
 	}
 
-
-	/*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-	public static void main(String[] args) {
-		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
-
-				/*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
-		/*driveToGetRFID();
-		moveThenHitAWallThenTurnLeft();
-		square();
-				/*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
-		/*moveArm(ArmHeight.HIGH); // Can be HIGH, MEDIUM, or LOW.
-		robot.sleep(10000);
-		printAllTheData();
-		remediateAndMix();
-		int temperature = pollTemperature();
-				for (int i = 0; i < 2; i ++)
-						echo (calculatePH(pollPhPin(), pollTemperature()));
-
-
-				/*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		/*echo ("pH OUTPUT: " + pollPhPin());
-		preLoad();
-		echo("TEMPERATURE: " + pollTemperature());
-		echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
-		robot.runMixer(MIXER, 5000);
-		driveThisManyFeet(3);
-				for (int i = 0; i < 5; i++) {
-						setServoAngle(20);
-						setServoAngle(70);
-				}
-		waitForBump();
-		preLoad();
-		mix();
-		dispenseRemediationFluidVolume(5.0);
-		preLoad();
-		backupMix();*/
-		//rightAngleTurn(Direction.LEFT);
-		//robot.runEncodedMotor(LEFT_MOTOR, MAX_SPEED, 40);
-		//setServoAngle(90);
-		//echo("Temperature: " + pollTemperature());
-		//echo("pH: " + pollPhPin());
-		//echo(pollPingDistance());
-		//moveBackwards(300);
-		//driveThisManyFeet(2);
-		//runUntilBumped();
-		//setServoAngle(100);
-		//preLoad();
-		//square();
-		//pointInShortestDirection();
-		//runUntilBumped();
-		//runMotorsIndefinitely();
-		//driveThisManyFeet(3.0);
-		//echo (keepCheckingForRFID());
-		//moveBackwards((int)(0.2*FOOT_TO_CLICK_CONVERSION));
-		//lessThanRightAngleTurn(Direction.LEFT);
-		//driveToGetRFID();
-		//lookForRFIDwithTurns();
-		//driveThisManyFeet(7);
-		//runUntilBumped();
-		//rightAngleTurn(Direction.RIGHT);
-		//robot.runMotor(LEFT_MOTOR, MAX_SPEED, 10000);
-		//robot.runMotor(LEFT_MOTOR, MAX_SPEED * -1, 10000);
-		//runUntilBumped();
-		//echo(keepCheckingForRFID());
-		driveThisManyFeet(7);
-		rightAngleTurn(Direction.RIGHT);
-		driveThisManyFeet(4);
-		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
+	static void parallelPark() {
+		robot.runEncodedMotor(LEFT_MOTOR, MAX_SPEED, 100);
+		robot.runEncodedMotor(RIGHT_MOTOR, MAX_SPEED, 100);
 	}
+
+	static void limbo() {
+		setServoAngle(LIMBO_ANGLE);
+		pointInShortestDirection();
+		driveThisManyFeet(10);
+		setServoAngle(0);
+	}
+
 	static void slit() {
 		while (true) {
 			driveThisManyFeet(7.0);
@@ -527,16 +477,74 @@ public class Main {
 		echo("Made it through the slit!");
 	}
 
-	static void maze() {
+	static void maze() {  // Designed to run immediately after finding the RFID tag.
 		for (int i = 0; i < 2; i++) {
 			rightAngleTurn(Direction.RIGHT);
 		}
 		while (true) {
 			runUntilBumped();
+			moveBackwards(100);
 			rightAngleTurn(Direction.RIGHT);
+			robot.sleep(100);
 
 		}
 	}
+	static int leftDistance;
+	static int rightDistance;
+	static void measureDistancesLeftAndRight() {
+		moveBackwards((int)(0.5 * FOOT_TO_CLICK_CONVERSION));
+		rightAngleTurn(Direction.LEFT);
+		leftDistance = pollPingDistance();
+		rightAngleTurn(Direction.RIGHT);
+		rightAngleTurn(Direction.RIGHT);
+		rightDistance = pollPingDistance();
+		rightAngleTurn(Direction.LEFT);
+	}
+
+	static final int ROBOT_WIDTH = 0;
+	static void navigate() {
+		pointInShortestDirection();
+		runUntilBumped();
+		measureDistancesLeftAndRight();
+		int width = leftDistance + rightDistance + ROBOT_WIDTH;
+		if (232 < width && width < 248)
+			;//gap();
+		else if (217 < width && width <= 232)
+			;//maze_hole();
+		else if (248 <= width && width <= 263)
+			;//maze_gap();
+    else if (330 <= width && width <= 390)
+      ;//far_wall();
+    else assert (width > 390);
+      ;//test_side();
+    ;//seekWater();
+    ;//approachWater();
+    remediate();
+	}
+
+	/*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+	public static void main(String[] args) {
+		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
+
+				/*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
+				/*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
+				/*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
+		/*echo ("pH OUTPUT: " + pollPhPin());
+		preLoad();
+		echo("TEMPERATURE: " + pollTemperature());
+		echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
+		robot.runMixer(MIXER, 5000);
+		driveThisManyFeet(3);
+				for (int i = 0; i < 5; i++) {
+						setServoAngle(20);
+						setServoAngle(70);
+				}
+		waitForBump();
+		preLoad();
+		mix();
+		dispenseRemediationFluidVolume(5.0);
+		preLoad();
+		backupMix();*/
+		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
+	}
 }
-//
-// HOLY SHIT RUNNING INTO WALLS MAKES US FACE THE WALL.

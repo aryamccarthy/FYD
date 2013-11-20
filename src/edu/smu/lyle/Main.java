@@ -10,12 +10,14 @@ public class Main {
 	static final int HIGH_ANGLE = 0;
 	static final int MEDIUM_ANGLE = 110;
 	static final int LOW_ANGLE = 140;
+	static final int IR_DISPARITY = 172;
 	// Pins
-	static final int BUMPER_RIGHT_PIN = 1;
-	static final int BUMPER_LEFT_PIN = 2;
+	static final int LOW_IR = 0;
+	static final int HIGH_IR = 1;
+	static final int BUMPER_RIGHT_PIN = 11;
+	static final int BUMPER_LEFT_PIN = 12;
 	static final int PH_PIN = 3;
 	static final int TURBIDITY_PIN = 4;
-	static final int WATER_PIN = 5;
 	// Motors
 	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;   // Pin 5
 	static final int RIGHT_MOTOR = RXTXRobot.MOTOR2;  // Pin 6
@@ -87,9 +89,11 @@ public class Main {
 		sensor.connect();
 		runMotorsIndefinitely();
 		while (true) {
-			if (sensor.hasTag())
+			if (sensor.hasTag()) {
+				stopMotors();
 				break;
-			if (eitherBumperPressed()) {
+			}
+			if (bothBumpersPressed()) {
 				stopMotors();
 				rightAngleTurn(Direction.LEFT);
 				runMotorsIndefinitely();
@@ -139,7 +143,6 @@ public class Main {
 		if (height == ArmHeight.LOW)
 			angle = LOW_ANGLE;
 		setServoAngle(angle);
-		assert isWet();
 	}
 
 	static void driveToGetRFID() {
@@ -189,7 +192,7 @@ public class Main {
 	/*************MOBILITY*****************************************************************************/
 
 	static void driveThisManyFeet(double feet) {
-		moveTheMotors(FOOT_TO_CLICK_CONVERSION * (int) feet);
+		moveTheMotors((int)(FOOT_TO_CLICK_CONVERSION * feet));
 		robot.resetEncodedMotorPosition(LEFT_MOTOR);
 		robot.resetEncodedMotorPosition(RIGHT_MOTOR);
 	}
@@ -295,6 +298,11 @@ public class Main {
 		return robot.getAnalogPin(pinNumber).getValue();
 	}
 
+	static int getDigitalData(int pinNumber) {
+		robot.refreshDigitalPins();
+		return robot.getDigitalPin(pinNumber).getValue();
+	}
+
 	static int pollSensorData(int pinNumber) {
 		int sum = 0;
 		int numGoodReads = 0;
@@ -334,21 +342,35 @@ public class Main {
 		return (int)Math.round((double)sum / numGoodReads);
 	}
 
-	static final int BUMPER_THRESHOLD = 945;
+	static int pollIR() {
+		int sumLow = 0;
+		int sumHigh = 0;
+		int numGoodReads = 0;
+		do {
+			robot.refreshAnalogPins();
+			sumLow += robot.getAnalogPin(LOW_IR).getValue();
+			sumHigh += robot.getAnalogPin(HIGH_IR).getValue();
+			numGoodReads++;
+		} while (numGoodReads < 10);
+		return (sumHigh - sumLow)/numGoodReads;
+	}
+
+	static final int BUMPER_THRESHOLD = 1;
 
 	static boolean bumperPressed(Direction direction) {
-		robot.refreshAnalogPins();
-		int bumperValue = (direction == Direction.LEFT) ? getSensorData(BUMPER_LEFT_PIN) : getSensorData(BUMPER_RIGHT_PIN);
+		int bumperValue = (direction == Direction.LEFT) ? getDigitalData(BUMPER_LEFT_PIN) : getDigitalData(BUMPER_RIGHT_PIN);
 		return bumperValue < BUMPER_THRESHOLD;
 	}
 
 	static boolean eitherBumperPressed() {
-		robot.refreshAnalogPins();
-		return (getSensorData(BUMPER_LEFT_PIN) < BUMPER_THRESHOLD || getSensorData(BUMPER_RIGHT_PIN) < BUMPER_THRESHOLD);
+		robot.refreshDigitalPins();
+		return robot.getDigitalPin(BUMPER_LEFT_PIN).getValue() == 0 || robot.getDigitalPin(BUMPER_RIGHT_PIN).getValue() == 0;
+		//return (getDigitalData(BUMPER_LEFT_PIN) < BUMPER_THRESHOLD || getDigitalData(BUMPER_RIGHT_PIN) < BUMPER_THRESHOLD);
 	}
 
 	static boolean bothBumpersPressed() {
-		return (getSensorData(BUMPER_LEFT_PIN) < BUMPER_THRESHOLD && getSensorData(BUMPER_RIGHT_PIN) < BUMPER_THRESHOLD);
+		robot.refreshDigitalPins();
+		return robot.getDigitalPin(BUMPER_LEFT_PIN).getValue() == 0 && robot.getDigitalPin(BUMPER_RIGHT_PIN).getValue() == 0;
 	}
 
 	static void waitForBump() {
@@ -371,10 +393,6 @@ public class Main {
 			}
 		}while(numGoodReads < 10);
 		return (int)Math.round((double)sum/numGoodReads);
-	}
-
-	static boolean isWet() {
-		return getSensorData(WATER_PIN) < 100;
 	}
 
 	static int pollPhPin() {
@@ -437,20 +455,11 @@ public class Main {
 		robot.setResetOnClose(false);
 	}
 	static void cleanup(){
-		//setServoAngle(45);
-		//setServoAngle(30);
-		//setServoAngle(15);
 		setServoAngle(0);
-		//robot.setResetOnClose(true);
 		robot.close();
 	}
 	static<T> void echo(T arg) {
 		System.out.println(arg);
-	}
-
-	static void parallelPark() {
-		robot.runEncodedMotor(LEFT_MOTOR, MAX_SPEED, 100);
-		robot.runEncodedMotor(RIGHT_MOTOR, MAX_SPEED, 100);
 	}
 
 	static void limbo() {
@@ -522,6 +531,26 @@ public class Main {
     remediate();
 	}
 
+	boolean isFacingLowWall()
+	{
+		int sumLow = 0;
+		int sumHigh = 0;
+		int numGoodReads = 0;
+		do {
+			robot.refreshAnalogPins();
+			sumLow += robot.getAnalogPin(LOW_IR).getValue();
+			sumHigh += robot.getAnalogPin(HIGH_IR).getValue();
+			numGoodReads++;
+		} while (numGoodReads < 5);
+		return Math.abs((sumLow - sumHigh)/numGoodReads) > IR_DISPARITY;
+	}
+
+	boolean isWet()
+	{
+		robot.refreshAnalogPins();
+		return robot.getAnalogPin(5).getValue() > 100;
+	}
+
 	/*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 	public static void main(String[] args) {
 		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
@@ -545,6 +574,25 @@ public class Main {
 		dispenseRemediationFluidVolume(5.0);
 		preLoad();
 		backupMix();*/
+		//robot.sleep(7000);
+		//pollPingDistance();
+		//echo (pollIR());
+		//mix();
+		//preLoad();
+		//robot.sleep(3000);
+		//runUntilBumped();
+		//robot.runEncodedMotor(LEFT_MOTOR, -1 * MAX_SPEED, 268);
+		//rightAngleTurn(Direction.RIGHT);
+		//driveThisManyFeet(3);
+		//echo (pollTemperature());
+		//runUntilBumped();
+		//robot.refreshAnalogPins();
+		//robot.refreshDigitalPins();
+		//runUntilBumped();
+		//echo (pollPingDistance());
+		//robot.runEncodedMotor(RIGHT_MOTOR, MAX_SPEED, 100);
+		//echo (pollIR());
+		//runUntilBumped();
 		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 	}
 }

@@ -7,9 +7,6 @@ public class Main {
 	// Arm Angles
 	static final int LIMBO_ANGLE = 40;
 
-	static final int HIGH_ANGLE = 0;
-	static final int MEDIUM_ANGLE = 110;
-	static final int LOW_ANGLE = 140;
 	static final int IR_DISPARITY = 172;
 	// Pins
 	static final int LOW_IR = 0;
@@ -17,6 +14,7 @@ public class Main {
 	static final int BUMPER_RIGHT_PIN = 11;
 	static final int BUMPER_LEFT_PIN = 12;
 	static final int PH_PIN = 3;
+	static final int UP_IR = 2;
 	static final int TURBIDITY_PIN = 4;
 	// Motors
 	static final int LEFT_MOTOR = RXTXRobot.MOTOR1;   // Pin 5
@@ -27,11 +25,11 @@ public class Main {
 	// Movement constants
 	public static final double MOTOR_CONSTANT;        // BIGGER NUMBERS -> MORE LEFT SKEW
 	static {
-		MOTOR_CONSTANT = 1.05;
+		MOTOR_CONSTANT = 0.94;
 	}
-	static final int MAX_SPEED = -500;
+	static final int MAX_SPEED = -450;
 	static final int FOOT_TO_CLICK_CONVERSION = 268;   // BIGGER NUMBER -> FARTHER DISTANCE
-	static final int TURN_CONSTANT = 268;//258              // BIGGER NUMBER -> BIGGER ANGLE
+	static final int TURN_CONSTANT = 330;//258              // BIGGER NUMBER -> BIGGER ANGLE
 	// Dispensing constants.
 	static final double SOLUTION_PH;
 	static {
@@ -49,6 +47,9 @@ public class Main {
 	static int temperature;
 	static double pH;
 	static double turbidity;
+	static boolean isLimbo;
+	static boolean isMaze;
+	static boolean isGap;
 
 	// SPRINT 3 REQUIREMENTS ***************************************************************************
 
@@ -62,13 +63,11 @@ public class Main {
 			robot.resetEncodedMotorPosition(RIGHT_MOTOR);
 		}
 	}
-
 	static void moveThenHitAWallThenTurnLeft() {
 		runUntilBumped();
 		moveBackwards((int) (0.25 * FOOT_TO_CLICK_CONVERSION));
 		rightAngleTurn(Direction.LEFT);
 	}
-
 	static void pointInShortestDirection() {
 		ArrayList a = new ArrayList<Integer>();
 		for (int i = 0; i < 4; i++) {
@@ -78,11 +77,10 @@ public class Main {
 		}
 		int minIndex = a.indexOf(Collections.min(a));
 		echo(minIndex);
-		for (int i = -1; i < minIndex; i++) {
+		for (int i = -2; i < minIndex; i++) {
 			rightAngleTurn(Direction.LEFT);
 		}
 	}
-
 	static void lookForRFIDwithTurns() {
 		RFIDSensor sensor = new RFIDSensor();
 		sensor.setPort(RFID_PORT);
@@ -105,7 +103,6 @@ public class Main {
 		sensor.close();
 		Main.challenge = result;
 	}
-
 	static void findRFID() {
 		pointInShortestDirection();
 		runUntilBumped();
@@ -113,7 +110,6 @@ public class Main {
 		rightAngleTurn(Direction.LEFT);
 		lookForRFIDwithTurns();
 	}
-
 	static void findGap() {
 		runMotorsIndefinitely();
 		while (true) {
@@ -132,59 +128,6 @@ public class Main {
 		moveTheMotors((int)(4 * FOOT_TO_CLICK_CONVERSION));
 	}
 
-
-	static enum ArmHeight {LOW, MEDIUM, HIGH}
-	static void moveArm (ArmHeight height) {
-		int angle = 0;
-		if (height == ArmHeight.HIGH)
-			angle = HIGH_ANGLE;
-		if (height == ArmHeight.MEDIUM)
-			angle = MEDIUM_ANGLE;
-		if (height == ArmHeight.LOW)
-			angle = LOW_ANGLE;
-		setServoAngle(angle);
-	}
-
-	static void driveToGetRFID() {
-		runMotorsIndefinitely();
-
-		String result = keepCheckingForRFID();
-
-		if (result.equals("66006C11F9E2")) result =
-				"\nThe location is Dadaab\n" +
-				"The obstacle is a limbo bar.\n" +
-				"The challenge is an elevated well.\n";
-		else if (result.equals("66006C432D64")) result =
-				"\nThe location is Fish Town.\n" +
-				"The obstacle is a a maze.\n" +
-				"The challenge is a ground-level water basin.\n";
-		else if (result.equals("66006C001F15")) result =
-				"\nThe location is Ali Ade.\n" +
-				"The obstacle is an opening in a wall.\n" +
-				"The challenge is an underground well.\n";
-		else result = "Undefined tag.";
-
-		echo(result);
-		stopMotors();
-
-	}
-
-	static void printAllTheData() {
-		int temperature = pollTemperature();
-		echo("Temperature: " + temperature);
-		double turbidity = calculateTurbidity(pollTurbidityPin());
-		echo("Turbidity: " + turbidity);
-		double pH = calculatePH(pollPhPin(), temperature);
-		echo("pH: " + pH);
-		System.out.printf("%13s:%d\n%13s:%5.3f\n%13s:%5.3f", "Temperature", temperature, "Turbidity:", turbidity, "pH", pH);
-
-	}
-
-	static void remediateAndMix() {
-		remediate();
-		mix();
-	}
-
 	// END OF REQUIREMENTS *****************************************************************************/
 
 	/*************BELOW THIS LINE DON'T FUCK WITH ME.**************************************************/
@@ -197,49 +140,37 @@ public class Main {
 		robot.resetEncodedMotorPosition(RIGHT_MOTOR);
 	}
 	static void lessThanRightAngleTurn(Direction direction) {
-		runMotorsToTurn(direction, TURN_CONSTANT*4/5);
+		runMotorsToTurn(direction, TURN_CONSTANT);
 	}
 	static void runMotorsIndefinitely() {
 		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT), RIGHT_MOTOR, MAX_SPEED, 0);
 	}
-
-	static void runSlowIndefinitely() {
-		robot.runMotor(LEFT_MOTOR, (int)(MAX_SPEED/MOTOR_CONSTANT/50), RIGHT_MOTOR,MAX_SPEED/50, 0);
-	}
-
 	static void stopMotors() {
 		robot.runMotor(LEFT_MOTOR, 0, RIGHT_MOTOR, 0, 0);
 	}
-
 	static void moveTheMotors(int ticks) {
 		robot.runEncodedMotor(LEFT_MOTOR, (int)(MAX_SPEED), ticks, RIGHT_MOTOR, MAX_SPEED, ticks);
 	}
-
 	static void moveBackwards(int ticks) {
 		robot.runEncodedMotor(LEFT_MOTOR, -1 * (int)(MAX_SPEED/MOTOR_CONSTANT), ticks, RIGHT_MOTOR, -1 *MAX_SPEED, ticks);
 	}
-
 	static void runUntilBumped() {
 		runMotorsIndefinitely();
 		waitForBump();
 		stopMotors();
 	}
-
-	static enum  Direction {LEFT, RIGHT}
+	static enum Direction {LEFT, RIGHT}
 	static void runMotorsToTurn(Direction direction, int duration) {
 		int dir = (direction == Direction.RIGHT) ? 1 : -1;
-		robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED /MOTOR_CONSTANT), duration, RIGHT_MOTOR, -1 * dir * MAX_SPEED, duration);
+		robot.runEncodedMotor(LEFT_MOTOR, dir * (int) (MAX_SPEED), duration, RIGHT_MOTOR, -1 * dir * MAX_SPEED, duration);
 	}
-
 	static void rightAngleTurn(Direction direction) {
 		runMotorsToTurn(direction, TURN_CONSTANT); // 400 is arbitrary. Requires testing.
 	}
-
 	static void setServoAngle(int angle) {
 		//robot.moveServo(SERVO, angle);
 		robot.moveBothServos(angle, angle);
 	}
-
 
 	/*************REMEDIATION*************************************************************************/
 
@@ -254,11 +185,9 @@ public class Main {
 		echo(((int) time) % MAX_TIME);
 		robot.runMotor(PUMP, -1 * MAX_SPEED, ((int)time) % MAX_TIME);
 	}
-
 	static void stopPump() {
 		robot.runMotor(PUMP, 0, 0);
 	}
-
 	static void preLoad() {
 		echo("Running.");
 		robot.runMotor(PUMP, -1 * MAX_SPEED, 0);
@@ -268,41 +197,37 @@ public class Main {
 		echo("Bumped.");
 		stopPump();
 	}
-
 	static void remediate() {
-		for (int i =1; i <= 10; i ++) {
-			setServoAngle(10 * i);
-		}
+		robot.runMotor(MIXER, 75, 0);
 		int temperature = pollTemperature();
 		echo("Initial temperature: " + temperature);
+		double turbidity = calculateTurbidity(pollTurbidityPin());
+		echo("Turbidity: " + turbidity);
 		double tankPH = calculatePH(pollPhPin(), temperature);
 		echo("Initial pH: " + tankPH);
-		while (6.8 < tankPH || tankPH < 7.2) {
+		while (7.0 < tankPH || tankPH < 7.5) {
+			if (SOLUTION_PH < 7.0 && tankPH < 7.0)
+				break;
+			if (SOLUTION_PH > 7.5 && tankPH > 7.5)
+				break;
 			dispenseRemediationFluidVolume(millilitersToDispense(tankPH, SOLUTION_PH));
-			mix();
+			robot.sleep(4000);
 			tankPH = calculatePH(pollPhPin(), temperature);
 			echo("pH is now: " + tankPH);
 		}
+		robot.runMotor(MIXER, 0, 0);
 		setServoAngle(0);
 	}
 
-	static void mix() {
-		robot.runMixer(MIXER, 5000);
-	}
-
-
 	/*************NAVIGATION**************************************************************************/
-
 	static int getSensorData(int pinNumber) {
 		robot.refreshAnalogPins();
 		return robot.getAnalogPin(pinNumber).getValue();
 	}
-
 	static int getDigitalData(int pinNumber) {
 		robot.refreshDigitalPins();
 		return robot.getDigitalPin(pinNumber).getValue();
 	}
-
 	static int pollSensorData(int pinNumber) {
 		int sum = 0;
 		int numGoodReads = 0;
@@ -315,19 +240,6 @@ public class Main {
 		}while(numGoodReads < 10);
 		return (int)Math.round((double)sum/numGoodReads);
 	}
-
-	static String keepCheckingForRFID() {
-		RFIDSensor sensor = new RFIDSensor();
-		sensor.setPort(RFID_PORT);
-		sensor.connect();
-
-		while(!sensor.hasTag()) sensor.sleep(100);
-		String result = sensor.getTag();
-
-		sensor.close();
-		return result;
-	}
-
 	static int pollPingDistance() {
 		int sum = 0;
 		int numGoodReads = 0;
@@ -341,8 +253,7 @@ public class Main {
 		}while(numGoodReads < 10);
 		return (int)Math.round((double)sum / numGoodReads);
 	}
-
-	static int pollIR() {
+	static boolean IRDisparity() {
 		int sumLow = 0;
 		int sumHigh = 0;
 		int numGoodReads = 0;
@@ -351,37 +262,33 @@ public class Main {
 			sumLow += robot.getAnalogPin(LOW_IR).getValue();
 			sumHigh += robot.getAnalogPin(HIGH_IR).getValue();
 			numGoodReads++;
-		} while (numGoodReads < 10);
-		return (sumHigh - sumLow)/numGoodReads;
+		} while (numGoodReads < 5);
+		return Math.abs((sumHigh - sumLow)/numGoodReads) > IR_DISPARITY;
 	}
-
-	static final int BUMPER_THRESHOLD = 1;
-
 	static boolean bumperPressed(Direction direction) {
 		int bumperValue = (direction == Direction.LEFT) ? getDigitalData(BUMPER_LEFT_PIN) : getDigitalData(BUMPER_RIGHT_PIN);
-		return bumperValue < BUMPER_THRESHOLD;
+		return bumperValue == 0;
 	}
-
+	static boolean onlyOneBumperPressed(Direction direction) {
+		robot.refreshDigitalPins();
+		return robot.getDigitalPin((direction == Direction.LEFT) ? BUMPER_LEFT_PIN : BUMPER_RIGHT_PIN).getValue() == 0 &&  !(robot.getDigitalPin((direction == Direction.RIGHT) ? BUMPER_LEFT_PIN : BUMPER_RIGHT_PIN).getValue() == 0);
+	}
 	static boolean eitherBumperPressed() {
 		robot.refreshDigitalPins();
 		return robot.getDigitalPin(BUMPER_LEFT_PIN).getValue() == 0 || robot.getDigitalPin(BUMPER_RIGHT_PIN).getValue() == 0;
 		//return (getDigitalData(BUMPER_LEFT_PIN) < BUMPER_THRESHOLD || getDigitalData(BUMPER_RIGHT_PIN) < BUMPER_THRESHOLD);
 	}
-
 	static boolean bothBumpersPressed() {
 		robot.refreshDigitalPins();
 		return robot.getDigitalPin(BUMPER_LEFT_PIN).getValue() == 0 && robot.getDigitalPin(BUMPER_RIGHT_PIN).getValue() == 0;
 	}
-
 	static void waitForBump() {
 		// 1023 is pressed. Each motor has a threshold for when it's "pressed".
-		while (true) if (eitherBumperPressed())
+		while (true) if (bothBumpersPressed())
 			break;
 	}
 
-
 	/*************TESTING******************************************************************************/
-
 	static int pollTemperature() {
 		int sum = 0;
 		int numGoodReads = 0;
@@ -394,15 +301,12 @@ public class Main {
 		}while(numGoodReads < 10);
 		return (int)Math.round((double)sum/numGoodReads);
 	}
-
 	static int pollPhPin() {
 		return pollSensorData(PH_PIN);
 	}
-
 	static int pollTurbidityPin() {
 		return pollSensorData(TURBIDITY_PIN);
 	}
-
 	static double calculateTurbidity(double input) {
 		// Relationship: Turb = 4 + 132*(3-V) (Arbitrary)
 		final double TURBIDITY_PIN_MAX_VALUE = 100.0;
@@ -412,7 +316,6 @@ public class Main {
 		voltage += 4;
 		return voltage;*/
 	}
-
 	static double calculatePH(double input, double temperature) {
 		// Relationship: E = E0 - G(RT/F)2.303pH
 		//final double E0 = 1;
@@ -424,11 +327,9 @@ public class Main {
 		return 12.3128- (0.0000342684 * (temperature+273.15) * input);
 		//return 14 - ((input-512)/96+7);//(E0 - voltage)/(gain * R * temperature / F / nE *2.303);
 	}
-
 	static double concentrationFromPH(double pH) {
 		return Math.pow(10, -1*pH);
 	}
-
 	static double millilitersToDispense(double tankPH, double remediationPH) {
 		double tankVolume = 1000;
 		return concentrationFromPH(tankPH) * tankVolume / concentrationFromPH(remediationPH);
@@ -442,7 +343,6 @@ public class Main {
 		}
 
 	}
-
 
 	/*************MISCELLANEOUS************************************************************************/
 	static void setup(){
@@ -463,27 +363,14 @@ public class Main {
 	}
 
 	static void limbo() {
+		runMotorsIndefinitely();
+		while (true) if (bothBumpersPressed())
+			break;
+		stopMotors();
 		setServoAngle(LIMBO_ANGLE);
 		pointInShortestDirection();
 		driveThisManyFeet(10);
 		setServoAngle(0);
-	}
-
-	static void slit() {
-		while (true) {
-			driveThisManyFeet(7.0);
-			if (!eitherBumperPressed()) {
-				rightAngleTurn(Direction.RIGHT);
-				driveThisManyFeet(4.0);
-				if (!eitherBumperPressed())
-					break;
-				else {
-					moveBackwards((int)(0.1 * FOOT_TO_CLICK_CONVERSION));
-					rightAngleTurn(Direction.LEFT);
-				}
-			}
-		}
-		echo("Made it through the slit!");
 	}
 
 	static void maze() {  // Designed to run immediately after finding the RFID tag.
@@ -501,14 +388,79 @@ public class Main {
 	static int leftDistance;
 	static int rightDistance;
 	static void measureDistancesLeftAndRight() {
-		moveBackwards((int)(0.5 * FOOT_TO_CLICK_CONVERSION));
-		rightAngleTurn(Direction.LEFT);
+		//moveBackwards((int)(0.5 * FOOT_TO_CLICK_CONVERSION));
 		leftDistance = pollPingDistance();
 		rightAngleTurn(Direction.RIGHT);
 		rightAngleTurn(Direction.RIGHT);
 		rightDistance = pollPingDistance();
 		rightAngleTurn(Direction.LEFT);
+		rightAngleTurn(Direction.LEFT);
 	}
+
+	static double inchesToFeet (double inches) {
+		return (double)inches / 12;
+	}
+	static double feetToInches (double feet) {
+		return feet * 12;
+	}
+	static double inchesToCm (double inches) {
+		return inches * 2.54;
+	}
+	static double cmToInches (double cm) {
+		return cm / 2.54;
+	}
+
+	static void gapWithoutSideInformation() {
+		runMotorsIndefinitely();
+		while (true) {
+			if (bothBumpersPressed()) {
+				if (IRDisparity())
+					break;
+				else {
+					rightAngleTurn(Direction.RIGHT);
+					runMotorsIndefinitely();
+				}
+			}
+			if (onlyOneBumperPressed(Direction.LEFT)) {
+				lessThanRightAngleTurn(Direction.RIGHT);
+				runMotorsIndefinitely();
+			}
+		}
+		stopMotors();
+		rightAngleTurn(Direction.RIGHT);
+		runMotorsIndefinitely();
+		while (robot.getPing() < 30)
+			continue;
+		stopMotors();
+		rightAngleTurn(Direction.LEFT);
+		driveThisManyFeet(4.0);
+
+	}
+	static void gap() {
+		rightAngleTurn(Direction.LEFT);
+		rightAngleTurn(Direction.LEFT);
+		driveThisManyFeet(6.4);
+		measureDistancesLeftAndRight();
+		rightAngleTurn(leftDistance > rightDistance ? Direction.LEFT : Direction.RIGHT);
+		driveThisManyFeet(inchesToFeet(cmToInches(270 - leftDistance > rightDistance ? rightDistance : leftDistance)));
+	}
+	static void slit() {
+		while (true) {
+			driveThisManyFeet(7.0);
+			if (!eitherBumperPressed()) {
+				rightAngleTurn(Direction.RIGHT);
+				driveThisManyFeet(4.0);
+				if (!eitherBumperPressed())
+					break;
+				else {
+					moveBackwards((int)(0.1 * FOOT_TO_CLICK_CONVERSION));
+					rightAngleTurn(Direction.LEFT);
+				}
+			}
+		}
+		echo("Made it through the slit!");
+	}
+
 
 	static final int ROBOT_WIDTH = 0;
 	static void navigate() {
@@ -516,37 +468,217 @@ public class Main {
 		runUntilBumped();
 		measureDistancesLeftAndRight();
 		int width = leftDistance + rightDistance + ROBOT_WIDTH;
-		if (232 < width && width < 248)
-			;//gap();
-		else if (217 < width && width <= 232)
-			;//maze_hole();
-		else if (248 <= width && width <= 263)
-			;//maze_gap();
-    else if (330 <= width && width <= 390)
-      ;//far_wall();
-    else assert (width > 390);
-      ;//test_side();
-    ;//seekWater();
-    ;//approachWater();
-    remediate();
+		if (231 < width && width < 257)
+			gap();
+		else if (205 < width && width <= 231)
+			maze_hole();
+		else if (257 <= width && width <= 269)
+			;//maze_wall();
+		else if (330 <= width && width <= 390)
+			;//far_wall();
+		else assert (width > 390);
+		;//test_side();
+		;//seekWater();
+		;//approachWater();
+		remediate();
 	}
 
-	boolean isFacingLowWall()
-	{
-		int sumLow = 0;
-		int sumHigh = 0;
-		int numGoodReads = 0;
-		do {
-			robot.refreshAnalogPins();
-			sumLow += robot.getAnalogPin(LOW_IR).getValue();
-			sumHigh += robot.getAnalogPin(HIGH_IR).getValue();
-			numGoodReads++;
-		} while (numGoodReads < 5);
-		return Math.abs((sumLow - sumHigh)/numGoodReads) > IR_DISPARITY;
+	static void navigateObstacle () {
+		if (isLimbo)
+			limbo();
+		else if (isGap)
+			gap();
+		else if (isMaze)
+			maze();
 	}
 
-	boolean isWet()
-	{
+	static void doAllSix() {
+		//identifyObstacle();
+		navigateObstacle();
+		seekWater();
+		remediate();
+		returnHome();
+	}
+
+	static void returnHome() {
+		if (isLimbo) {
+
+			setServoAngle(LIMBO_ANGLE);
+			;
+		}
+	}
+
+	static void RFIDAndMaze() {
+		runAndCorrect();
+
+	}
+
+	static void maze_wall() {
+		runMotorsIndefinitely();
+		while (true) {
+			if (bothBumpersPressed()) {
+				if (IRDisparity())
+					break;
+				else {
+					rightAngleTurn(Direction.LEFT);
+					runMotorsIndefinitely();
+				}
+			}
+			if (onlyOneBumperPressed(Direction.RIGHT)) {
+				lessThanRightAngleTurn(Direction.LEFT);
+				runMotorsIndefinitely();
+			}
+		}
+		stopMotors();
+		rightAngleTurn(Direction.LEFT);
+		runUntilBumped();
+		maze_hole();
+	}
+
+	static void correction () {
+		runMotorsIndefinitely();
+		while (true) {
+			if (bothBumpersPressed()) {
+				if (IRDisparity())
+					break;
+				else {
+					rightAngleTurn(Direction.LEFT);
+					runMotorsIndefinitely();
+				}
+			}
+			if (onlyOneBumperPressed(Direction.RIGHT)) {
+				lessThanRightAngleTurn(Direction.LEFT);
+				runMotorsIndefinitely();
+			}
+		}
+		stopMotors();
+	}
+
+	static final int UP_THRESHOLD = 50;
+	static boolean isUnderLimboBar() {
+		int ir_data = pollSensorData(UP_IR);
+		return ir_data < 204;
+	}
+
+	/*
+	 * Promises to go from wall with hole through hole and around to other size.
+	 */
+	static void maze_hole() {
+		rightAngleTurn(Direction.RIGHT);
+		runUntilBumped();
+		moveBackwards((int)(0.25 * FOOT_TO_CLICK_CONVERSION));
+		rightAngleTurn(Direction.RIGHT);
+		runMotorsIndefinitely();
+		while (true) if (robot.getPing() > 50)
+			break;
+		stopMotors();
+		rightAngleTurn(Direction.LEFT);
+		runMotorsIndefinitely();
+		while (true) if (robot.getPing() > 50)
+			break;
+		robot.sleep(400);
+		//stopMotors();
+		rightAngleTurn(Direction.LEFT);
+		driveThisManyFeet(1.5);
+		rightAngleTurn(Direction.RIGHT);
+	}
+
+	static void runAndCorrect() {
+		pointInShortestDirection();
+		runUntilBumped();
+		boolean RFIDfound = false;
+		runMotorsIndefinitely();
+		RFIDSensor rfid = new RFIDSensor();
+		rfid.setPort(RFID_PORT);
+		rfid.connect();
+		while (!rfid.hasTag()) {
+			if (onlyOneBumperPressed(Direction.LEFT)) {
+				lessThanRightAngleTurn(Direction.RIGHT);
+				runMotorsIndefinitely();
+			}
+			if (bothBumpersPressed()) {
+				moveBackwards((int)(0.25 * FOOT_TO_CLICK_CONVERSION));
+				rightAngleTurn(Direction.RIGHT);
+				runMotorsIndefinitely();
+			}
+		}
+		stopMotors();
+		switch (rfid.getTag()) {
+			case "66006C11F9E2":
+				echo ("\nThe location is Dadaab\n" +
+						"The obstacle is a limbo bar.\n" +
+						"The challenge is an elevated well.\n");
+				break;
+			case "66006C432D64":
+				echo ("\nThe location is Fish Town.\n" +
+						"The obstacle is a a maze.\n" +
+						"The challenge is a ground-level water basin.\n");
+				break;
+			case "66006C001F15":
+				echo ("\nThe location is Ali Ade.\n" +
+						"The obstacle is an opening in a wall.\n" +
+						"The challenge is an underground well.\n");
+				break;
+			default:
+				echo ("Unrecognized RFID tag.");
+				break;
+		}
+
+		rfid.close();
+	}
+
+	static void turnLeftOrRightShortest () {
+		rightAngleTurn(leftDistance < rightDistance ? Direction.LEFT : Direction.RIGHT);
+	}
+
+	/*~~~~~~~~~~~~~~~~~~~~~~~ WATER ARM THINGS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+	static void seekWater() {
+		seekWell();
+		approachWell();
+		lowerArmIntoWater();
+	}
+	static void approachWell () {
+		rightAngleTurn(Direction.LEFT);
+		runUntilBumped();
+		moveBackwards((int)(0.25 * FOOT_TO_CLICK_CONVERSION));
+	}
+	static final int LEFT = 0;
+	static final int RIGHT = 1;
+	static int direction;
+	static void seekWell() {
+		if (isLimbo) {
+			runUntilBumped();
+			measureDistancesLeftAndRight();
+			turnLeftOrRightShortest();
+			runMotorsIndefinitely();
+			while (!IRDisparity())
+				continue;
+			stopMotors();
+		}
+		runMotorsIndefinitely();
+		int count = 0;
+		while (true) {
+			if (eitherBumperPressed()) {
+				for (int i = 0; i < 2; i++) {
+					rightAngleTurn(Direction.LEFT);
+				}
+				count++;
+				count %= 2;
+			}
+			if (robot.getPing() < 150) {
+				stopMotors();
+				break;
+			}
+		}
+	}
+	static void lowerArmIntoWater() {
+		int servoAngle = 0;
+		while (!isWet()) {
+			setServoAngle (servoAngle + 10);
+			servoAngle += 10;
+		}
+	}
+	static boolean isWet() {
 		robot.refreshAnalogPins();
 		return robot.getAnalogPin(5).getValue() > 100;
 	}
@@ -554,45 +686,7 @@ public class Main {
 	/*~~~~~~~~~~~~~~~~~~~~~~~ MAIN ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 	public static void main(String[] args) {
 		setup(); //~~~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
-
-				/*~~~~~~~~~ Mobility and Navigation ~~~~~~~~~~~~~~*/
-				/*~~~~~~~~~ Testing and Remediation ~~~~~~~~~~~~~~*/
-				/*~~~~~~~~~ DEBUGGING... ~~~~~~~~~~~~~~~~~~~~~~~~~*/
-		/*echo ("pH OUTPUT: " + pollPhPin());
-		preLoad();
-		echo("TEMPERATURE: " + pollTemperature());
-		echo("TURBIDITY OUTPUT: " + pollTurbidityPin());
-		robot.runMixer(MIXER, 5000);
-		driveThisManyFeet(3);
-				for (int i = 0; i < 5; i++) {
-						setServoAngle(20);
-						setServoAngle(70);
-				}
-		waitForBump();
-		preLoad();
-		mix();
-		dispenseRemediationFluidVolume(5.0);
-		preLoad();
-		backupMix();*/
-		//robot.sleep(7000);
-		//pollPingDistance();
-		//echo (pollIR());
-		//mix();
-		//preLoad();
-		//robot.sleep(3000);
-		//runUntilBumped();
-		//robot.runEncodedMotor(LEFT_MOTOR, -1 * MAX_SPEED, 268);
-		//rightAngleTurn(Direction.RIGHT);
-		//driveThisManyFeet(3);
-		//echo (pollTemperature());
-		//runUntilBumped();
-		//robot.refreshAnalogPins();
-		//robot.refreshDigitalPins();
-		//runUntilBumped();
-		//echo (pollPingDistance());
-		//robot.runEncodedMotor(RIGHT_MOTOR, MAX_SPEED, 100);
-		//echo (pollIR());
-		//runUntilBumped();
+		doAllSix();
 		cleanup(); //~~~~~~~~~~~~~~DON'T MESS WITH THIS PART.
 	}
 }
